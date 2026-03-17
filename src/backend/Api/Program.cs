@@ -11,7 +11,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<RoomEngine>();
 builder.Services.AddDbContext<TheHatDbContext>(options => options.UseSqlite(sqliteConnectionString));
-builder.Services.AddScoped<IRoomStore, SqliteRoomStore>();
+builder.Services.AddScoped<IApplicationDbContext>(serviceProvider => serviceProvider.GetRequiredService<TheHatDbContext>());
 builder.Services.AddHealthChecks().AddDbContextCheck<TheHatDbContext>(name: "sqlite");
 
 var app = builder.Build();

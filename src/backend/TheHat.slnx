@@ -1,4 +1,7 @@
 <Solution>
-  <Project Path="TheHat.Backend.csproj" />
+  <Project Path="Api/TheHat.Api.csproj" />
+  <Project Path="Contracts/TheHat.Contracts.csproj" />
+  <Project Path="Domain/TheHat.Domain.csproj" />
+  <Project Path="Persistance/TheHat.Persistence.csproj" />
   <Project Path="tests/TheHat.Backend.Tests.csproj" />
 </Solution>

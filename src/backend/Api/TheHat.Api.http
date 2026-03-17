@@ -1,0 +1,5 @@
+@TheHat.Api_HostAddress = http://localhost:5131
+
+GET {{TheHat.Api_HostAddress}}/health
+
+###

@@ -4,7 +4,11 @@ The Hat is a full-stack multiplayer party game built with .NET on the backend an
 
 ## Repository structure
 
-- `src/backend` — ASP.NET Core backend API
+- `src/backend/Api` — ASP.NET Core API host
+- `src/backend/Contracts` — backend API contracts
+- `src/backend/Domain` — game domain model and engine
+- `src/backend/Persistance` — EF Core persistence with direct `DbContext` usage
+- `src/backend/tests` — backend tests
 - `src/frontend` — React + TypeScript frontend
 - `src/shared` — shared contracts and cross-cutting code placeholder
 - `docs` — backlog, issue tracking, and developer documentation
@@ -37,7 +41,7 @@ Basic health check strategy:
 From the repository root:
 
 1. `dotnet restore src/backend/TheHat.slnx`
-2. `dotnet run --project src/backend`
+2. `dotnet run --project src/backend/Api`
 
 The backend runs independently, persists room state in SQLite, and exposes a health endpoint at `/health`.
 

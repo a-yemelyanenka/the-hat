@@ -6,7 +6,7 @@ using Xunit;
 
 namespace TheHat.Backend.Tests;
 
-public sealed class SqliteRoomStoreTests : IDisposable
+public sealed class TheHatDbContextTests : IDisposable
 {
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"the-hat-tests-{Guid.NewGuid():N}.db");
 
@@ -16,16 +16,16 @@ public sealed class SqliteRoomStoreTests : IDisposable
         await using (var saveContext = CreateContext())
         {
             await saveContext.Database.EnsureCreatedAsync();
-            var store = new SqliteRoomStore(saveContext);
             var room = CreateRoom();
 
-            await store.SaveAsync(room);
+            saveContext.Rooms.Add(room);
+            await saveContext.SaveChangesAsync();
         }
 
         await using var loadContext = CreateContext();
-        var restoredStore = new SqliteRoomStore(loadContext);
-
-        var restoredRoom = await restoredStore.LoadAsync("room-persisted");
+        var restoredRoom = await loadContext.Rooms
+            .AsNoTracking()
+            .SingleOrDefaultAsync(room => room.RoomId == "room-persisted");
 
         Assert.NotNull(restoredRoom);
         Assert.Equal(RoomPhase.InProgress, restoredRoom!.Phase);

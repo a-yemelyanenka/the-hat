@@ -195,3 +195,23 @@ Model used for this conversation: GPT-5.4
 > Follow instructions in [implement-issues.prompt.md](file:///d%3A/Repos/the-hat/.github/prompts/implement-issues.prompt.md).
 >
 > 2-5
+
+## Prompt 19
+**Model:** GPT-5.4
+
+> refactor current backend
+>
+> 1) create separate folders with projects for, don't forget to move all files approriatly
+> Api
+> Domain
+> Persistance
+> Contracts
+> 2) No need to implement repository pattern, use DbContext Directly. Models that used in DbContext should be the same as used in Domain
+
+## Prompt 20
+**Model:** GPT-5.4
+
+> Domain will need to access DbContext. Let's do the following
+> Domain should contain interface IApplicationDbContext with required DbSets
+> and Persistance DbContext implements this interface
+> DI happens on Api layer
