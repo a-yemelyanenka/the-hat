@@ -16,7 +16,7 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 ---
 
 ## Epic 1: Project foundation
-- [ ] Issue 1 — Initialize solution structure for .NET backend and React frontend
+- [x] Issue 1 — Initialize solution structure for .NET backend and React frontend
 - [ ] Issue 2 — Add Docker-based local development setup
 - [ ] Issue 3 — Define shared domain model and API contracts
 - [ ] Issue 4 — Choose and implement persistence strategy for rooms and game state
@@ -71,7 +71,7 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 ## Optional notes
 | Issue | Status | Notes | Links |
 | --- | --- | --- | --- |
-| 1 | Not started |  |  |
+| 1 | Done | Solution, backend, frontend, shared folder, README, and env examples added. |  |
 | 2 | Not started |  |  |
 | 3 | Not started |  |  |
 | 4 | Not started |  |  |

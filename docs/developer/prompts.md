@@ -98,3 +98,23 @@ Model used for this conversation: GPT-5.4
 **Model:** GPT-5.4
 
 > you maybe misunderstood, this is copilot feature and placed under .github/prompts/*.prompt.md
+
+## Prompt 13
+**Model:** GPT-5.4
+
+> Follow instructions in [implement-issues.prompt.md](file:///d%3A/Repos/the-hat/.github/prompts/implement-issues.prompt.md).
+>
+> 1
+
+## Prompt 14
+**Model:** GPT-5.4
+
+> coninue where you stopped
+
+## Prompt 15
+**Model:** GPT-5.4
+
+> code reivew
+>
+> 1) put c# sln into backed folder
+> 2) use new slnx format

@@ -1,0 +1,64 @@
+.app-shell {
+  display: grid;
+  gap: 2rem;
+  padding: 4rem 1.5rem;
+  text-align: left;
+}
+
+.hero {
+  display: grid;
+  gap: 1rem;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.lead {
+  max-width: 48rem;
+  font-size: 1.125rem;
+}
+
+.card-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.card,
+.next-steps {
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background: var(--social-bg);
+  box-shadow: var(--shadow);
+}
+
+.card h2,
+.next-steps h2 {
+  margin-bottom: 0.75rem;
+}
+
+.next-steps ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.next-steps li + li {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    padding: 2rem 1rem;
+  }
+
+  .lead {
+    font-size: 1rem;
+  }
+}
