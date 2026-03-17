@@ -1,0 +1,108 @@
+# The Hat — Issue Status Tracker
+
+This file tracks implementation progress for the backlog defined in [docs/features.md](docs/features.md).
+
+## Status legend
+- [ ] Not started
+- [~] In progress
+- [x] Done
+- [-] Deferred / Post-MVP
+
+## How to use
+- Update the status marker for an issue when work starts or finishes.
+- Optionally add links to pull requests, commits, or notes.
+- Keep issue numbering aligned with [docs/features.md](docs/features.md).
+
+---
+
+## Epic 1: Project foundation
+- [ ] Issue 1 — Initialize solution structure for .NET backend and React frontend
+- [ ] Issue 2 — Add Docker-based local development setup
+- [ ] Issue 3 — Define shared domain model and API contracts
+- [ ] Issue 4 — Choose and implement persistence strategy for rooms and game state
+- [ ] Issue 5 — Add backend test project for game rules and room state transitions
+
+## Epic 2: Room creation and lobby
+- [ ] Issue 6 — Implement room creation API
+- [ ] Issue 7 — Build create-room screen in React
+- [ ] Issue 8 — Implement join-room flow with display name entry
+- [ ] Issue 9 — Build live lobby screen with player list and readiness state
+- [ ] Issue 10 — Implement host editing of room settings after players join
+- [ ] Issue 11 — Implement player ordering management
+- [ ] Issue 12 — Prevent game start until all word submissions are complete
+
+## Epic 3: Word submission
+- [ ] Issue 13 — Implement word submission API and storage
+- [ ] Issue 14 — Build word entry UX for players
+- [ ] Issue 15 — Hide submitted words from gameplay views
+
+## Epic 4: Real-time room and session management
+- [ ] Issue 16 — Implement real-time messaging for lobby and gameplay state
+- [ ] Issue 17 — Implement rejoin and session recovery by display name
+- [ ] Issue 18 — Handle player leave/disconnect state mid-game
+
+## Epic 5: Game engine and rules
+- [ ] Issue 19 — Implement game state machine for rounds, turns, and room phases
+- [ ] Issue 20 — Implement turn rotation based on ordered player ring
+- [ ] Issue 21 — Implement round-specific rule enforcement
+- [ ] Issue 22 — Implement word draw, guess confirmation, and no-skip rule
+- [ ] Issue 23 — Implement turn timer and timeout behavior
+- [ ] Issue 24 — Implement reshuffle logic for each round
+- [ ] Issue 25 — Implement end-of-round and final scoring summary
+- [ ] Issue 26 — Implement host pause/resume controls
+
+## Epic 6: Gameplay UI
+- [ ] Issue 27 — Build active turn screen for explainer and observers
+- [ ] Issue 28 — Build score and turn-status panels for all players
+- [ ] Issue 29 — Build round transition and summary screens
+
+## Epic 7: Internationalization and usability
+- [ ] Issue 30 — Add internationalization framework to frontend
+- [ ] Issue 31 — Externalize backend/user-facing game messages for i18n support
+- [ ] Issue 32 — Improve responsive UX for mobile-first gameplay
+
+## Epic 8: Release readiness
+- [ ] Issue 33 — Add error handling and recovery UX for failed realtime/API actions
+- [ ] Issue 34 — Add basic telemetry/logging for room lifecycle and gameplay failures
+- [ ] Issue 35 — Create manual QA checklist for MVP gameplay flows
+
+---
+
+## Optional notes
+| Issue | Status | Notes | Links |
+| --- | --- | --- | --- |
+| 1 | Not started |  |  |
+| 2 | Not started |  |  |
+| 3 | Not started |  |  |
+| 4 | Not started |  |  |
+| 5 | Not started |  |  |
+| 6 | Not started |  |  |
+| 7 | Not started |  |  |
+| 8 | Not started |  |  |
+| 9 | Not started |  |  |
+| 10 | Not started |  |  |
+| 11 | Not started |  |  |
+| 12 | Not started |  |  |
+| 13 | Not started |  |  |
+| 14 | Not started |  |  |
+| 15 | Not started |  |  |
+| 16 | Not started |  |  |
+| 17 | Not started |  |  |
+| 18 | Not started |  |  |
+| 19 | Not started |  |  |
+| 20 | Not started |  |  |
+| 21 | Not started |  |  |
+| 22 | Not started |  |  |
+| 23 | Not started |  |  |
+| 24 | Not started |  |  |
+| 25 | Not started |  |  |
+| 26 | Not started |  |  |
+| 27 | Not started |  |  |
+| 28 | Not started |  |  |
+| 29 | Not started |  |  |
+| 30 | Not started |  |  |
+| 31 | Not started |  |  |
+| 32 | Not started |  |  |
+| 33 | Not started |  |  |
+| 34 | Not started |  |  |
+| 35 | Not started |  |  |

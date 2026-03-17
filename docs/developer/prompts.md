@@ -74,3 +74,27 @@ Model used for this conversation: GPT-5.4
 **Model:** GPT-5.4
 
 > make initial commit
+
+## Prompt 9
+**Model:** GPT-5.4
+
+> push my branch
+
+## Prompt 10
+**Model:** GPT-5.4
+
+> add one more file into docs where you'll track what issue already done
+
+## Prompt 11
+**Model:** GPT-5.4
+
+> add copilot prompt file which I'll use to start executing of  issues.
+> This prompt file should contain following prompts(you can adjust for better readiness)
+>
+> Take a look at features.md file and implement the issues provided (issue number/numbers will be provideded afyer /...).
+> When the issue is implemented update issue-status.md file
+
+## Prompt 12
+**Model:** GPT-5.4
+
+> you maybe misunderstood, this is copilot feature and placed under .github/prompts/*.prompt.md
