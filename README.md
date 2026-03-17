@@ -11,6 +11,27 @@ The Hat is a full-stack multiplayer party game built with .NET on the backend an
 
 ## Local development
 
+### Containerized local setup
+
+From the repository root:
+
+1. Copy [.env.example](.env.example) to `.env` if you want to override default ports or the frontend API base URL.
+2. Run `docker compose up --build`.
+3. Open the frontend at `http://localhost:4173` and the backend health endpoint at `http://localhost:5000/health`.
+
+Container environment variables:
+
+- `THE_HAT_API_PORT` — host port mapped to the backend container, default `5000`
+- `THE_HAT_FRONTEND_PORT` — host port mapped to the frontend container, default `4173`
+- `VITE_API_BASE_URL` — frontend build-time API base URL used inside the container network, default `http://backend:8080`
+- `ConnectionStrings__TheHat` — backend SQLite file path inside the container, default `/app/data/thehat.db`
+
+Basic health check strategy:
+
+- Backend exposes `/health` and reports database readiness.
+- Compose waits for the backend health check before starting the frontend dependency chain.
+- The SQLite database lives in the `thehat-data` named volume so room state survives backend restarts.
+
 ### Backend
 
 From the repository root:
@@ -18,7 +39,7 @@ From the repository root:
 1. `dotnet restore src/backend/TheHat.slnx`
 2. `dotnet run --project src/backend`
 
-The backend runs independently and exposes the default ASP.NET Core API surface.
+The backend runs independently, persists room state in SQLite, and exposes a health endpoint at `/health`.
 
 ### Frontend
 
@@ -41,6 +62,7 @@ Example local variables:
 
 - Backend: `ASPNETCORE_ENVIRONMENT=Development`
 - Backend: `ASPNETCORE_URLS=http://localhost:5000`
+- Backend: `ConnectionStrings__TheHat=Data Source=App_Data/thehat.development.db`
 - Frontend: `VITE_API_BASE_URL=http://localhost:5000`
 
 Use [src/frontend/.env.example](src/frontend/.env.example) as the frontend starting point.
@@ -50,3 +72,4 @@ Use [src/frontend/.env.example](src/frontend/.env.example) as the frontend start
 - The solution file is [src/backend/TheHat.slnx](src/backend/TheHat.slnx).
 - Issue backlog lives in [docs/features.md](docs/features.md).
 - Progress tracking lives in [docs/issue-status.md](docs/issue-status.md).
+- Domain model and contract documentation lives in [docs/domain-model.md](docs/domain-model.md).

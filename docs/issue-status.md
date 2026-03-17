@@ -17,10 +17,10 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 
 ## Epic 1: Project foundation
 - [x] Issue 1 — Initialize solution structure for .NET backend and React frontend
-- [ ] Issue 2 — Add Docker-based local development setup
-- [ ] Issue 3 — Define shared domain model and API contracts
-- [ ] Issue 4 — Choose and implement persistence strategy for rooms and game state
-- [ ] Issue 5 — Add backend test project for game rules and room state transitions
+- [x] Issue 2 — Add Docker-based local development setup
+- [x] Issue 3 — Define shared domain model and API contracts
+- [x] Issue 4 — Choose and implement persistence strategy for rooms and game state
+- [x] Issue 5 — Add backend test project for game rules and room state transitions
 
 ## Epic 2: Room creation and lobby
 - [ ] Issue 6 — Implement room creation API
@@ -72,10 +72,10 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | Issue | Status | Notes | Links |
 | --- | --- | --- | --- |
 | 1 | Done | Solution, backend, frontend, shared folder, README, and env examples added. |  |
-| 2 | Not started |  |  |
-| 3 | Not started |  |  |
-| 4 | Not started |  |  |
-| 5 | Not started |  |  |
+| 2 | Done | Added multi-stage Dockerfiles, root compose setup, env example, backend `/health`, and container health checks. |  |
+| 3 | Done | Added documented domain model plus backend/frontend room, lobby, gameplay DTOs and events. |  |
+| 4 | Done | Implemented SQLite-backed room store with persisted room snapshots and startup database initialization. |  |
+| 5 | Done | Added backend xUnit test project covering scoring, round flow, timer expiry, duplicate words, inactive players, rejoin matching, and persistence restore. |  |
 | 6 | Not started |  |  |
 | 7 | Not started |  |  |
 | 8 | Not started |  |  |

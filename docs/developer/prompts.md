@@ -118,3 +118,80 @@ Model used for this conversation: GPT-5.4
 >
 > 1) put c# sln into backed folder
 > 2) use new slnx format
+
+## Prompt 16
+**Model:** GPT-5.4
+
+> implement a new custom prompt
+>
+> prompt:
+> take a look at issue-status.md and features.md => # Suggested implementation order and give me next 10 issue that needed to be implemented in format
+> Epic 1 issue 1
+> Epic 1 issue 3
+> etc.
+
+## Prompt 17
+**Model:** GPT-5.4
+
+> <attachment id="prompt:next-issues.prompt.md" filePath="d:\Repos\the-hat\.github\prompts\next-issues.prompt.md">
+> Prompt instructions file:
+> # List next backlog issues
+>
+> Take a look at [docs/issue-status.md](../../docs/issue-status.md) and the [Suggested implementation order](../../docs/features.md#suggested-implementation-order) in [docs/features.md](../../docs/features.md), then list the next 10 issues that should be implemented.
+>
+> ## Instructions
+> - Use the suggested implementation order from [docs/features.md](../../docs/features.md).
+> - Cross-check current completion state in [docs/issue-status.md](../../docs/issue-status.md).
+> - Skip issues already marked as done.
+> - Prefer issues not started or in progress.
+> - Return exactly the next 10 remaining issues in backlog order, or fewer if fewer remain.
+> - Format each result on its own line as:
+>   - `Epic 1 issue 1`
+>   - `Epic 1 issue 3`
+> - Do not include descriptions, bullets, numbering, or extra commentary.
+>
+> ## Expected workflow
+> 1. Read [docs/issue-status.md](../../docs/issue-status.md).
+> 2. Read the [Suggested implementation order](../../docs/features.md#suggested-implementation-order) in [docs/features.md](../../docs/features.md).
+> 3. Filter out completed issues.
+> 4. Output the next 10 issues in the required format.
+>
+> </attachment>
+> Follow instructions in [next-issues.prompt.md](file:///d%3A/Repos/the-hat/.github/prompts/next-issues.prompt.md).
+
+## Prompt 18
+**Model:** GPT-5.4
+
+> <attachment id="prompt:implement-issues.prompt.md" filePath="d:\Repos\the-hat\.github\prompts\implement-issues.prompt.md">
+> Prompt instructions file:
+> # Implement backlog issues
+>
+> Take a look at [docs/features.md](../../docs/features.md) and implement the issue or issues provided after `/`.
+>
+> ## Instructions
+> - Read the requested issue definitions in [docs/features.md](../../docs/features.md).
+> - Implement only the requested issue scope.
+> - Keep changes minimal and focused.
+> - Follow the project guidance in [copilot-instructions.md](../copilot-instructions.md).
+> - Add or update tests when the issue changes core logic or state transitions.
+> - Keep documentation aligned with the implementation.
+> - When the issue is implemented, update [docs/issue-status.md](../../docs/issue-status.md).
+> - Also update [docs/developer/prompts.md](../../docs/developer/prompts.md) with the latest user prompt and model.
+>
+> ## Usage examples
+> - `/1`
+> - `/6,8,9`
+> - `/19-24`
+>
+> ## Expected workflow
+> 1. Read the matching issues in [docs/features.md](../../docs/features.md).
+> 2. Identify the affected files.
+> 3. Implement the requested issues.
+> 4. Validate the changes.
+> 5. Update [docs/issue-status.md](../../docs/issue-status.md).
+> 6. Summarize completed work and any follow-up items.
+>
+> </attachment>
+> Follow instructions in [implement-issues.prompt.md](file:///d%3A/Repos/the-hat/.github/prompts/implement-issues.prompt.md).
+>
+> 2-5
