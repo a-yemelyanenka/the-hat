@@ -45,6 +45,10 @@ From the repository root:
 
 The backend runs independently, persists room state in SQLite, and exposes a health endpoint at `/health`.
 
+Currently implemented API:
+
+- `POST /api/rooms` creates a lobby room for the host and returns the room snapshot plus a shareable invite link.
+
 ### Frontend
 
 From the repository root:

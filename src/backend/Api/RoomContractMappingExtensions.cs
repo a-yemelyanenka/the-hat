@@ -1,0 +1,68 @@
+using TheHat.Backend.Contracts;
+using TheHat.Backend.Domain;
+
+namespace TheHat.Backend.Api;
+
+internal static class RoomContractMappingExtensions
+{
+    public static RoomSettings ToDomain(this RoomSettingsDto dto) => new()
+    {
+        WordsPerPlayer = dto.WordsPerPlayer,
+        TurnDurationSeconds = dto.TurnDurationSeconds,
+        PlayerOrderMode = dto.PlayerOrderMode,
+    };
+
+    public static RoomSnapshotDto ToDto(this RoomState room) => new(
+        room.RoomId,
+        room.InviteCode,
+        room.Phase,
+        room.HostPlayerId,
+        room.Settings.ToDto(),
+        room.Players
+            .OrderBy(player => player.OrderIndex)
+            .Select(player => player.ToDto())
+            .ToList(),
+        room.Words.Select(word => word.ToDto()).ToList(),
+        room.Rounds
+            .OrderBy(round => round.RoundNumber)
+            .Select(round => round.ToDto())
+            .ToList(),
+        room.CurrentRoundNumber,
+        room.CurrentTurn?.ToDto(),
+        room.CreatedAtUtc,
+        room.UpdatedAtUtc);
+
+    private static RoomSettingsDto ToDto(this RoomSettings settings) => new(
+        settings.WordsPerPlayer,
+        settings.TurnDurationSeconds,
+        settings.PlayerOrderMode);
+
+    private static PlayerDto ToDto(this PlayerState player) => new(
+        player.Id,
+        player.DisplayName,
+        player.IsHost,
+        player.IsActive,
+        player.OrderIndex,
+        player.Score);
+
+    private static WordSubmissionDto ToDto(this WordEntry word) => new(
+        word.Id,
+        word.Text,
+        word.SubmittedByPlayerId);
+
+    private static RoundStateDto ToDto(this RoundState round) => new(
+        round.RoundNumber,
+        round.Rule,
+        round.RemainingWordIds.ToList(),
+        round.GuessedWordIds.ToList(),
+        round.IsCompleted);
+
+    private static TurnStateDto ToDto(this TurnState turn) => new(
+        turn.TurnNumber,
+        turn.ExplainerPlayerId,
+        turn.GuesserPlayerId,
+        turn.ActiveWordId,
+        turn.StartedAtUtc,
+        turn.ExpiredAtUtc,
+        turn.CompletedAtUtc);
+}

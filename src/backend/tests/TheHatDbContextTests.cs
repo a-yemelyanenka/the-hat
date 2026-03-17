@@ -8,6 +8,7 @@ namespace TheHat.Backend.Tests;
 
 public sealed class TheHatDbContextTests : IDisposable
 {
+    private readonly IDisplayNameNormalizer _displayNameNormalizer = new DisplayNameNormalizer();
     private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"the-hat-tests-{Guid.NewGuid():N}.db");
 
     [Fact]
@@ -16,7 +17,7 @@ public sealed class TheHatDbContextTests : IDisposable
         await using (var saveContext = CreateContext())
         {
             await saveContext.Database.EnsureCreatedAsync();
-            var room = CreateRoom();
+            var room = CreateRoom(_displayNameNormalizer);
 
             saveContext.Rooms.Add(room);
             await saveContext.SaveChangesAsync();
@@ -51,7 +52,7 @@ public sealed class TheHatDbContextTests : IDisposable
         return new TheHatDbContext(options);
     }
 
-    private static RoomState CreateRoom()
+    private static RoomState CreateRoom(IDisplayNameNormalizer displayNameNormalizer)
     {
         var timestamp = new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc);
 
@@ -73,7 +74,7 @@ public sealed class TheHatDbContextTests : IDisposable
                 {
                     Id = "player-1",
                     DisplayName = "Host1",
-                    NormalizedDisplayName = RoomEngine.NormalizeDisplayName("Host1"),
+                    NormalizedDisplayName = displayNameNormalizer.Normalize("Host1"),
                     IsHost = true,
                     OrderIndex = 0,
                     Score = 4,
@@ -82,7 +83,7 @@ public sealed class TheHatDbContextTests : IDisposable
                 {
                     Id = "player-2",
                     DisplayName = "Guest",
-                    NormalizedDisplayName = RoomEngine.NormalizeDisplayName("Guest"),
+                    NormalizedDisplayName = displayNameNormalizer.Normalize("Guest"),
                     IsActive = false,
                     OrderIndex = 1,
                     Score = 2,

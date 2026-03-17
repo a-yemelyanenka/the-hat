@@ -1,18 +1,12 @@
 namespace TheHat.Backend.Domain;
 
-public sealed class RoomEngine
+public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : IRoomEngine
 {
-    public static string NormalizeDisplayName(string displayName)
-    {
-        ArgumentNullException.ThrowIfNull(displayName);
-        return displayName.Trim().ToUpperInvariant();
-    }
-
     public PlayerState? FindRejoinCandidate(RoomState room, string displayName)
     {
         ArgumentNullException.ThrowIfNull(room);
 
-        var normalizedName = NormalizeDisplayName(displayName);
+        var normalizedName = displayNameNormalizer.Normalize(displayName);
         return room.Players.FirstOrDefault(player => player.NormalizedDisplayName == normalizedName);
     }
 
@@ -154,7 +148,7 @@ public sealed class RoomEngine
         return orderedActivePlayers[nextIndex].Id;
     }
 
-    private static RoundState GetCurrentRound(RoomState room)
+    private RoundState GetCurrentRound(RoomState room)
     {
         ArgumentNullException.ThrowIfNull(room);
 
@@ -162,13 +156,13 @@ public sealed class RoomEngine
         return room.Rounds.Single(round => round.RoundNumber == currentRoundNumber);
     }
 
-    private static TurnState GetCurrentTurn(RoomState room)
+    private TurnState GetCurrentTurn(RoomState room)
     {
         ArgumentNullException.ThrowIfNull(room);
         return room.CurrentTurn ?? throw new InvalidOperationException("The room does not have an active turn.");
     }
 
-    private static void AddPoint(RoomState room, string playerId)
+    private void AddPoint(RoomState room, string playerId)
     {
         var player = room.Players.Single(playerState => playerState.Id == playerId);
         player.Score += 1;
@@ -216,7 +210,7 @@ public sealed class RoomEngine
         });
     }
 
-    private static RoundRule ResolveRule(int roundNumber) => roundNumber switch
+    private RoundRule ResolveRule(int roundNumber) => roundNumber switch
     {
         1 => RoundRule.ExplainNoSynonyms,
         2 => RoundRule.GesturesOnly,
@@ -224,7 +218,7 @@ public sealed class RoomEngine
         _ => throw new ArgumentOutOfRangeException(nameof(roundNumber), roundNumber, "Only three rounds exist in The Hat."),
     };
 
-    private static void Shuffle(List<string> items, Random random)
+    private void Shuffle(List<string> items, Random random)
     {
         for (var index = items.Count - 1; index > 0; index--)
         {

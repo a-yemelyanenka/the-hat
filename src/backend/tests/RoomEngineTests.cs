@@ -5,12 +5,18 @@ namespace TheHat.Backend.Tests;
 
 public sealed class RoomEngineTests
 {
-    private readonly RoomEngine _roomEngine = new();
+    private readonly IDisplayNameNormalizer _displayNameNormalizer = new DisplayNameNormalizer();
+    private readonly IRoomEngine _roomEngine;
+
+    public RoomEngineTests()
+    {
+        _roomEngine = new RoomEngine(_displayNameNormalizer);
+    }
 
     [Fact]
     public void NormalizeDisplayName_TrimsAndIgnoresCase()
     {
-        var normalized = RoomEngine.NormalizeDisplayName("  aLiCe  ");
+        var normalized = _displayNameNormalizer.Normalize("  aLiCe  ");
 
         Assert.Equal("ALICE", normalized);
     }
@@ -138,7 +144,7 @@ public sealed class RoomEngineTests
                 {
                     Id = "player-1",
                     DisplayName = "Alice",
-                    NormalizedDisplayName = RoomEngine.NormalizeDisplayName("Alice"),
+                    NormalizedDisplayName = new DisplayNameNormalizer().Normalize("Alice"),
                     IsHost = true,
                     OrderIndex = 0,
                 },
@@ -146,14 +152,14 @@ public sealed class RoomEngineTests
                 {
                     Id = "player-2",
                     DisplayName = "Bob",
-                    NormalizedDisplayName = RoomEngine.NormalizeDisplayName("Bob"),
+                    NormalizedDisplayName = new DisplayNameNormalizer().Normalize("Bob"),
                     OrderIndex = 1,
                 },
                 new PlayerState
                 {
                     Id = "player-3",
                     DisplayName = "Cara",
-                    NormalizedDisplayName = RoomEngine.NormalizeDisplayName("Cara"),
+                    NormalizedDisplayName = new DisplayNameNormalizer().Normalize("Cara"),
                     OrderIndex = 2,
                 },
             ],
@@ -190,7 +196,7 @@ public sealed class RoomEngineTests
                 {
                     Id = "player-1",
                     DisplayName = "Alice",
-                    NormalizedDisplayName = RoomEngine.NormalizeDisplayName("Alice"),
+                    NormalizedDisplayName = new DisplayNameNormalizer().Normalize("Alice"),
                     IsHost = true,
                     OrderIndex = 0,
                 },
@@ -198,7 +204,7 @@ public sealed class RoomEngineTests
                 {
                     Id = "player-2",
                     DisplayName = "Bob",
-                    NormalizedDisplayName = RoomEngine.NormalizeDisplayName("Bob"),
+                    NormalizedDisplayName = new DisplayNameNormalizer().Normalize("Bob"),
                     OrderIndex = 1,
                 },
             ],

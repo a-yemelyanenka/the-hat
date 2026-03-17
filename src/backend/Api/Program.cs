@@ -1,5 +1,7 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using TheHat.Backend.Domain;
 using TheHat.Backend.Persistence;
 
@@ -7,9 +9,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 var sqliteConnectionString = ResolveSqliteConnectionString(builder.Configuration, builder.Environment);
 
-builder.Services.AddControllers();
+builder.Services
+    .AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+    });
 builder.Services.AddOpenApi();
-builder.Services.AddSingleton<RoomEngine>();
+builder.Services.AddDomainServices();
 builder.Services.AddDbContext<TheHatDbContext>(options => options.UseSqlite(sqliteConnectionString));
 builder.Services.AddScoped<IApplicationDbContext>(serviceProvider => serviceProvider.GetRequiredService<TheHatDbContext>());
 builder.Services.AddHealthChecks().AddDbContextCheck<TheHatDbContext>(name: "sqlite");
