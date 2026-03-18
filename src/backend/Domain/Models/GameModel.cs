@@ -23,11 +23,29 @@ public enum RoundRule
 
 public sealed record RoomSettings
 {
-    public int WordsPerPlayer { get; init; }
+    public int WordsPerPlayer { get; set; }
 
-    public int TurnDurationSeconds { get; init; }
+    public int TurnDurationSeconds { get; set; }
 
-    public PlayerOrderMode PlayerOrderMode { get; init; } = PlayerOrderMode.Random;
+    public PlayerOrderMode PlayerOrderMode { get; set; } = PlayerOrderMode.Random;
+}
+
+public sealed record PlayerSubmissionProgress
+{
+    public string PlayerId { get; init; } = string.Empty;
+
+    public int SubmittedCount { get; init; }
+
+    public int RequiredCount { get; init; }
+
+    public bool IsComplete { get; init; }
+}
+
+public sealed record LobbyReadiness
+{
+    public bool CanStart { get; init; }
+
+    public IReadOnlyList<string> BlockingReasons { get; init; } = [];
 }
 
 public sealed record PlayerState
@@ -100,7 +118,7 @@ public sealed record RoomState
 
     public RoomPhase Phase { get; set; } = RoomPhase.Lobby;
 
-    public RoomSettings Settings { get; init; } = new();
+    public RoomSettings Settings { get; set; } = new();
 
     public List<PlayerState> Players { get; init; } = [];
 
@@ -115,4 +133,117 @@ public sealed record RoomState
     public DateTime CreatedAtUtc { get; init; }
 
     public DateTime UpdatedAtUtc { get; set; }
+
+    public IReadOnlyList<PlayerSubmissionProgress> GetSubmissionProgress()
+    {
+        var requiredCount = Settings.WordsPerPlayer;
+        var submittedCounts = Words
+            .GroupBy(word => word.SubmittedByPlayerId, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+
+        return Players
+            .OrderBy(player => player.OrderIndex)
+            .Select(player =>
+            {
+                var submittedCount = submittedCounts.GetValueOrDefault(player.Id, 0);
+                return new PlayerSubmissionProgress
+                {
+                    PlayerId = player.Id,
+                    SubmittedCount = submittedCount,
+                    RequiredCount = requiredCount,
+                    IsComplete = !player.IsActive || submittedCount == requiredCount,
+                };
+            })
+            .ToList();
+    }
+
+    public LobbyReadiness GetLobbyReadiness()
+    {
+        var blockingReasons = new List<string>();
+
+        if (Phase != RoomPhase.Lobby)
+        {
+            blockingReasons.Add("The game can only be started from the lobby.");
+        }
+
+        var activePlayers = Players
+            .Where(player => player.IsActive)
+            .OrderBy(player => player.OrderIndex)
+            .ToList();
+
+        if (activePlayers.Count < 2)
+        {
+            blockingReasons.Add("At least two active players are required to start the game.");
+        }
+
+        var progressByPlayerId = GetSubmissionProgress()
+            .ToDictionary(progress => progress.PlayerId, StringComparer.Ordinal);
+
+        foreach (var player in activePlayers)
+        {
+            var progress = progressByPlayerId[player.Id];
+
+            if (progress.SubmittedCount < progress.RequiredCount)
+            {
+                var missingCount = progress.RequiredCount - progress.SubmittedCount;
+                var noun = missingCount == 1 ? "word" : "words";
+                blockingReasons.Add($"{player.DisplayName} still needs {missingCount} more {noun}.");
+                continue;
+            }
+
+            if (progress.SubmittedCount > progress.RequiredCount)
+            {
+                blockingReasons.Add($"{player.DisplayName} has submitted more than the allowed number of words.");
+            }
+        }
+
+        return new LobbyReadiness
+        {
+            CanStart = blockingReasons.Count == 0,
+            BlockingReasons = blockingReasons,
+        };
+    }
+
+    public void ApplyPlayerOrder(IReadOnlyList<string> orderedPlayerIds)
+    {
+        ArgumentNullException.ThrowIfNull(orderedPlayerIds);
+
+        var expectedPlayerIds = Players
+            .Select(player => player.Id)
+            .OrderBy(playerId => playerId, StringComparer.Ordinal)
+            .ToList();
+
+        var suppliedPlayerIds = orderedPlayerIds
+            .OrderBy(playerId => playerId, StringComparer.Ordinal)
+            .ToList();
+
+        if (expectedPlayerIds.Count != suppliedPlayerIds.Count
+            || expectedPlayerIds.Where((playerId, index) => !StringComparer.Ordinal.Equals(playerId, suppliedPlayerIds[index])).Any())
+        {
+            throw new DomainValidationException(new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                ["orderedPlayerIds"] = ["Manual player order must include every player exactly once."],
+            });
+        }
+
+        for (var index = 0; index < orderedPlayerIds.Count; index++)
+        {
+            var player = Players.Single(existingPlayer => existingPlayer.Id == orderedPlayerIds[index]);
+            player.OrderIndex = index;
+        }
+    }
+
+    public void ShufflePlayers(Random random)
+    {
+        ArgumentNullException.ThrowIfNull(random);
+
+        var shuffledPlayers = Players
+            .OrderBy(_ => random.Next())
+            .ToList();
+
+        for (var index = 0; index < shuffledPlayers.Count; index++)
+        {
+            shuffledPlayers[index].OrderIndex = index;
+        }
+    }
 }

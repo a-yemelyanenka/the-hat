@@ -41,6 +41,11 @@ public sealed class RoomJoinService(
             Score = 0,
         });
 
+        if (room.Settings.PlayerOrderMode == PlayerOrderMode.Random)
+        {
+            room.ShufflePlayers(Random.Shared);
+        }
+
         room.UpdatedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 

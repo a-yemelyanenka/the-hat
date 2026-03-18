@@ -4,11 +4,40 @@ public sealed class RoomFactory(IDisplayNameNormalizer displayNameNormalizer) : 
 {
     public void ValidateCreateRoom(string hostDisplayName, RoomSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+
         var errors = new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             [nameof(hostDisplayName)] = string.IsNullOrWhiteSpace(hostDisplayName)
                 ? ["The host display name is required."]
                 : [],
+            [$"{nameof(settings)}.{nameof(RoomSettings.WordsPerPlayer)}"] = settings.WordsPerPlayer <= 0
+                ? ["Words per player must be greater than zero."]
+                : [],
+            [$"{nameof(settings)}.{nameof(RoomSettings.TurnDurationSeconds)}"] = settings.TurnDurationSeconds <= 0
+                ? ["Turn duration must be greater than zero."]
+                : [],
+            [$"{nameof(settings)}.{nameof(RoomSettings.PlayerOrderMode)}"] = !Enum.IsDefined(settings.PlayerOrderMode)
+                ? ["A supported player order mode is required."]
+                : [],
+        };
+
+        var validationErrors = errors
+            .Where(entry => entry.Value.Length > 0)
+            .ToDictionary(entry => entry.Key, entry => entry.Value, StringComparer.Ordinal);
+
+        if (validationErrors.Count > 0)
+        {
+            throw new DomainValidationException(validationErrors);
+        }
+    }
+
+    public void ValidateSettings(RoomSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        var errors = new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
             [$"{nameof(settings)}.{nameof(RoomSettings.WordsPerPlayer)}"] = settings.WordsPerPlayer <= 0
                 ? ["Words per player must be greater than zero."]
                 : [],

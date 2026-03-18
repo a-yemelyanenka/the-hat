@@ -10,16 +10,20 @@ import type {
   JoinRoomRequestDto,
   RoomSnapshotDto,
 } from './contracts/theHatContracts'
-import { createRoom, joinRoom, RoomServiceError } from './services/roomsService'
+import { createRoom, getRoom, joinRoom, RoomServiceError, startGame, updateRoomSettings } from './services/roomsService'
 import type {
   CopyState,
   CreateRoomFormState,
+  LobbySettingsFormState,
   FieldErrors,
   Route,
+  RoomSessionState,
   ValidationProblemDetails,
 } from './appModels'
 import { defaultFormState } from './appModels'
-const STORAGE_KEY = 'the-hat:last-created-room'
+
+const STORAGE_KEY = 'the-hat:room-session'
+const LOBBY_REFRESH_INTERVAL_MS = 3000
 
 function getRoute(pathname: string): Route {
   if (pathname === '/create-room') {
@@ -57,7 +61,32 @@ function extractStoredRoomSnapshot(value: unknown): RoomSnapshotDto | null {
   return null
 }
 
-function loadStoredRoom(): RoomSnapshotDto | null {
+function extractStoredRoomSession(value: unknown): RoomSessionState | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const sessionValue = value as { room?: unknown; currentPlayerId?: unknown }
+  const room = extractStoredRoomSnapshot(sessionValue.room)
+  if (room && typeof sessionValue.currentPlayerId === 'string' && sessionValue.currentPlayerId.trim()) {
+    return {
+      room,
+      currentPlayerId: sessionValue.currentPlayerId,
+    }
+  }
+
+  const fallbackRoom = extractStoredRoomSnapshot(value)
+  if (!fallbackRoom) {
+    return null
+  }
+
+  return {
+    room: fallbackRoom,
+    currentPlayerId: fallbackRoom.hostPlayerId,
+  }
+}
+
+function loadStoredRoomSession(): RoomSessionState | null {
   const stored = window.sessionStorage.getItem(STORAGE_KEY)
 
   if (!stored) {
@@ -65,7 +94,7 @@ function loadStoredRoom(): RoomSnapshotDto | null {
   }
 
   try {
-    return extractStoredRoomSnapshot(JSON.parse(stored))
+    return extractStoredRoomSession(JSON.parse(stored))
   } catch {
     window.sessionStorage.removeItem(STORAGE_KEY)
     return null
@@ -76,18 +105,44 @@ function buildInviteLink(inviteCode: string): string {
   return `${window.location.origin}/join/${inviteCode}`
 }
 
+function resolveCurrentPlayerId(room: RoomSnapshotDto, displayName: string): string {
+  const trimmedDisplayName = displayName.trim()
+  const exactMatch = room.players.find((player) => player.displayName === trimmedDisplayName)
+  if (exactMatch) {
+    return exactMatch.playerId
+  }
+
+  const caseInsensitiveMatch = room.players.find(
+    (player) => player.displayName.trim().toLocaleUpperCase() === trimmedDisplayName.toLocaleUpperCase(),
+  )
+
+  return caseInsensitiveMatch?.playerId ?? room.hostPlayerId
+}
+
+function getFirstProblemMessage(problem: ValidationProblemDetails): string {
+  const firstMessage = Object.values(problem.errors ?? {}).flat()[0]
+  return firstMessage ?? problem.title ?? 'The request could not be completed.'
+}
+
 function App() {
   const [route, setRoute] = useState<Route>(() => getRoute(window.location.pathname))
   const [formState, setFormState] = useState<CreateRoomFormState>(defaultFormState)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [serverError, setServerError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [roomSession, setRoomSession] = useState<RoomSnapshotDto | null>(() => loadStoredRoom())
+  const [roomSession, setRoomSession] = useState<RoomSessionState | null>(() => loadStoredRoomSession())
   const [copyState, setCopyState] = useState<CopyState>('idle')
   const [joinDisplayName, setJoinDisplayName] = useState('')
   const [joinFieldError, setJoinFieldError] = useState('')
   const [joinServerError, setJoinServerError] = useState('')
   const [isJoining, setIsJoining] = useState(false)
+  const [isLobbyRefreshing, setIsLobbyRefreshing] = useState(false)
+  const [lobbySyncError, setLobbySyncError] = useState('')
+  const [isSavingLobbySettings, setIsSavingLobbySettings] = useState(false)
+  const [lobbySettingsError, setLobbySettingsError] = useState('')
+  const [lobbySettingsSuccess, setLobbySettingsSuccess] = useState('')
+  const [isStartingGame, setIsStartingGame] = useState(false)
+  const [lobbyStartError, setLobbyStartError] = useState('')
 
   useEffect(() => {
     const handlePopState = () => {
@@ -107,13 +162,74 @@ function App() {
     window.sessionStorage.removeItem(STORAGE_KEY)
   }, [roomSession])
 
-  const lobbyRoom = useMemo(() => {
+  const lobbySession = useMemo(() => {
     if (route.name !== 'lobby' || !roomSession) {
       return null
     }
 
-    return roomSession.roomId === route.roomId ? roomSession : null
+    return roomSession.room.roomId === route.roomId ? roomSession : null
   }, [roomSession, route])
+
+  const lobbyRoomId = lobbySession?.room.roomId ?? null
+
+  useEffect(() => {
+    if (!lobbyRoomId) {
+      setIsLobbyRefreshing(false)
+      setLobbySyncError('')
+      return
+    }
+
+    let isDisposed = false
+
+    const refreshLobby = async (backgroundRefresh: boolean) => {
+      if (!backgroundRefresh) {
+        setIsLobbyRefreshing(true)
+      }
+
+      try {
+        const refreshedRoom = await getRoom(lobbyRoomId)
+        if (isDisposed) {
+          return
+        }
+
+        setRoomSession((current) => {
+          if (!current || current.room.roomId !== refreshedRoom.roomId) {
+            return current
+          }
+
+          return {
+            ...current,
+            room: refreshedRoom,
+          }
+        })
+        setLobbySyncError('')
+      } catch (error) {
+        if (isDisposed) {
+          return
+        }
+
+        if (error instanceof RoomServiceError) {
+          setLobbySyncError(error.message)
+        } else {
+          setLobbySyncError('The lobby could not be refreshed. Try again in a moment.')
+        }
+      } finally {
+        if (!isDisposed && !backgroundRefresh) {
+          setIsLobbyRefreshing(false)
+        }
+      }
+    }
+
+    void refreshLobby(false)
+    const intervalId = window.setInterval(() => {
+      void refreshLobby(true)
+    }, LOBBY_REFRESH_INTERVAL_MS)
+
+    return () => {
+      isDisposed = true
+      window.clearInterval(intervalId)
+    }
+  }, [lobbyRoomId])
 
   const navigate = (nextPath: string) => {
     window.history.pushState({}, '', nextPath)
@@ -197,7 +313,10 @@ function App() {
 
     try {
       const result = await createRoom(payload)
-      setRoomSession(result.room)
+      setRoomSession({
+        room: result.room,
+        currentPlayerId: result.room.hostPlayerId,
+      })
       navigate(`/rooms/${result.room.roomId}/lobby`)
     } catch (error) {
       if (error instanceof RoomServiceError) {
@@ -240,7 +359,10 @@ function App() {
 
     try {
       const result = await joinRoom(route.inviteCode, payload)
-      setRoomSession(result)
+      setRoomSession({
+        room: result,
+        currentPlayerId: resolveCurrentPlayerId(result, payload.displayName),
+      })
       navigate(`/rooms/${result.roomId}/lobby`)
     } catch (error) {
       if (error instanceof RoomServiceError) {
@@ -260,15 +382,96 @@ function App() {
   }
 
   const copyInviteLink = async () => {
-    if (!lobbyRoom) {
+    if (!lobbySession) {
       return
     }
 
     try {
-      await navigator.clipboard.writeText(buildInviteLink(lobbyRoom.inviteCode))
+      await navigator.clipboard.writeText(buildInviteLink(lobbySession.room.inviteCode))
       setCopyState('copied')
     } catch {
       setCopyState('failed')
+    }
+  }
+
+  const handleSaveLobbySettings = async (
+    nextSettings: LobbySettingsFormState,
+    orderedPlayerIds?: string[],
+  ): Promise<boolean> => {
+    if (!lobbySession) {
+      return false
+    }
+
+    setIsSavingLobbySettings(true)
+    setLobbySettingsError('')
+    setLobbySettingsSuccess('')
+    setLobbyStartError('')
+
+    try {
+      const updatedRoom = await updateRoomSettings(lobbySession.room.roomId, {
+        hostPlayerId: lobbySession.currentPlayerId,
+        settings: {
+          wordsPerPlayer: Number(nextSettings.wordsPerPlayer),
+          turnDurationSeconds: Number(nextSettings.turnDurationSeconds),
+          playerOrderMode: nextSettings.playerOrderMode,
+        },
+        orderedPlayerIds,
+      })
+
+      setRoomSession((current) =>
+        current && current.room.roomId === updatedRoom.roomId
+          ? {
+              ...current,
+              room: updatedRoom,
+            }
+          : current,
+      )
+      setLobbySettingsSuccess('Lobby settings saved.')
+      return true
+    } catch (error) {
+      if (error instanceof RoomServiceError) {
+        setLobbySettingsError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        return false
+      }
+
+      setLobbySettingsError('Saving lobby settings failed. Try again in a moment.')
+      return false
+    } finally {
+      setIsSavingLobbySettings(false)
+    }
+  }
+
+  const handleStartGame = async (): Promise<void> => {
+    if (!lobbySession) {
+      return
+    }
+
+    setIsStartingGame(true)
+    setLobbyStartError('')
+    setLobbySettingsSuccess('')
+
+    try {
+      const updatedRoom = await startGame(lobbySession.room.roomId, {
+        hostPlayerId: lobbySession.currentPlayerId,
+      })
+
+      setRoomSession((current) =>
+        current && current.room.roomId === updatedRoom.roomId
+          ? {
+              ...current,
+              room: updatedRoom,
+            }
+          : current,
+      )
+    } catch (error) {
+      if (error instanceof RoomServiceError) {
+        setLobbyStartError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        return
+      }
+
+      setLobbyStartError('Starting the game failed. Try again in a moment.')
+    } finally {
+      setIsStartingGame(false)
     }
   }
 
@@ -309,11 +512,20 @@ function App() {
   if (route.name === 'lobby') {
     return (
       <LobbyPage
-        room={lobbyRoom}
-        inviteLink={lobbyRoom ? buildInviteLink(lobbyRoom.inviteCode) : ''}
+        session={lobbySession}
+        inviteLink={lobbySession ? buildInviteLink(lobbySession.room.inviteCode) : ''}
         copyState={copyState}
+        syncError={lobbySyncError}
+        isRefreshing={isLobbyRefreshing}
+        isSavingSettings={isSavingLobbySettings}
+        settingsError={lobbySettingsError}
+        settingsSuccess={lobbySettingsSuccess}
+        isStartingGame={isStartingGame}
+        startError={lobbyStartError}
         onCopyInviteLink={copyInviteLink}
         onCreateRoom={() => navigate('/create-room')}
+        onSaveSettings={handleSaveLobbySettings}
+        onStartGame={handleStartGame}
       />
     )
   }

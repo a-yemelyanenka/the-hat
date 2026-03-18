@@ -1,4 +1,4 @@
-import type { PlayerOrderMode } from './contracts/theHatContracts'
+import type { PlayerOrderMode, RoomSnapshotDto } from './contracts/theHatContracts'
 
 export type Route =
   | { name: 'home' }
@@ -21,6 +21,17 @@ export type ValidationProblemDetails = {
 }
 
 export type CopyState = 'idle' | 'copied' | 'failed'
+
+export type RoomSessionState = {
+  room: RoomSnapshotDto
+  currentPlayerId: string
+}
+
+export type LobbySettingsFormState = {
+  wordsPerPlayer: string
+  turnDurationSeconds: string
+  playerOrderMode: PlayerOrderMode
+}
 
 export const defaultFormState: CreateRoomFormState = {
   hostDisplayName: '',

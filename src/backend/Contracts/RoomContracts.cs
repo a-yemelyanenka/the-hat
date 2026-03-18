@@ -15,6 +15,16 @@ public sealed record PlayerDto(
     int OrderIndex,
     int Score);
 
+public sealed record PlayerSubmissionProgressDto(
+    string PlayerId,
+    int SubmittedCount,
+    int RequiredCount,
+    bool IsComplete);
+
+public sealed record LobbyReadinessDto(
+    bool CanStart,
+    IReadOnlyList<string> BlockingReasons);
+
 public sealed record WordSubmissionDto(
     string WordId,
     string Text,
@@ -43,6 +53,8 @@ public sealed record RoomSnapshotDto(
     string HostPlayerId,
     RoomSettingsDto Settings,
     IReadOnlyList<PlayerDto> Players,
+    IReadOnlyList<PlayerSubmissionProgressDto> SubmissionProgress,
+    LobbyReadinessDto LobbyReadiness,
     IReadOnlyList<WordSubmissionDto> Words,
     IReadOnlyList<RoundStateDto> Rounds,
     int? CurrentRoundNumber,

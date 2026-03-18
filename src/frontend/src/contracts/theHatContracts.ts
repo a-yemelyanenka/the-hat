@@ -8,6 +8,18 @@ export interface RoomSettingsDto {
   playerOrderMode: PlayerOrderMode
 }
 
+export interface PlayerSubmissionProgressDto {
+  playerId: string
+  submittedCount: number
+  requiredCount: number
+  isComplete: boolean
+}
+
+export interface LobbyReadinessDto {
+  canStart: boolean
+  blockingReasons: string[]
+}
+
 export interface PlayerDto {
   playerId: string
   displayName: string
@@ -48,6 +60,8 @@ export interface RoomSnapshotDto {
   hostPlayerId: string
   settings: RoomSettingsDto
   players: PlayerDto[]
+  submissionProgress: PlayerSubmissionProgressDto[]
+  lobbyReadiness: LobbyReadinessDto
   words: WordSubmissionDto[]
   rounds: RoundStateDto[]
   currentRoundNumber: number | null

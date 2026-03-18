@@ -26,10 +26,10 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 - [x] Issue 6 — Implement room creation API
 - [x] Issue 7 — Build create-room screen in React
 - [x] Issue 8 — Implement join-room flow with display name entry
-- [ ] Issue 9 — Build live lobby screen with player list and readiness state
-- [ ] Issue 10 — Implement host editing of room settings after players join
-- [ ] Issue 11 — Implement player ordering management
-- [ ] Issue 12 — Prevent game start until all word submissions are complete
+- [x] Issue 9 — Build live lobby screen with player list and readiness state
+- [x] Issue 10 — Implement host editing of room settings after players join
+- [x] Issue 11 — Implement player ordering management
+- [x] Issue 12 — Prevent game start until all word submissions are complete
 
 ## Epic 3: Word submission
 - [ ] Issue 13 — Implement word submission API and storage
@@ -79,10 +79,10 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 6 | Done | Added `POST /api/rooms` with room persistence, invite-link generation, and validation for initial lobby settings. |  |
 | 7 | Done | Added a responsive create-room flow with form validation, backend integration, and host routing into a simple lobby screen. |  |
 | 8 | Done | Added invite-link join routing, join-room API validation, and lobby snapshots that include the host plus newly joined players. |  |
-| 9 | Not started |  |  |
-| 10 | Not started |  |  |
-| 11 | Not started |  |  |
-| 12 | Not started |  |  |
+| 9 | Done | Added a polling-based live lobby view with player list, host/current badges, submission progress, and readiness messaging. |  |
+| 10 | Done | Added lobby settings fetch/update APIs plus host controls to change words per player, turn timer, and order mode after players join. |  |
+| 11 | Done | Added persisted player-order management for random and manual modes, including host move-up/move-down controls and turn-order consistency coverage. |  |
+| 12 | Done | Added backend start-game validation that blocks incomplete submissions and surfaces blocking reasons directly in the lobby UI. |  |
 | 13 | Not started |  |  |
 | 14 | Not started |  |  |
 | 15 | Not started |  |  |

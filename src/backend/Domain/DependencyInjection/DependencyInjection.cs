@@ -9,6 +9,7 @@ public static class DependencyInjection
         services.AddSingleton<IDisplayNameNormalizer, DisplayNameNormalizer>();
         services.AddSingleton<IRoomEngine, RoomEngine>();
         services.AddSingleton<IRoomFactory, RoomFactory>();
+        services.AddScoped<IRoomLobbyService, RoomLobbyService>();
         services.AddScoped<IRoomCreationService, RoomCreationService>();
         services.AddScoped<IRoomJoinService, RoomJoinService>();
 

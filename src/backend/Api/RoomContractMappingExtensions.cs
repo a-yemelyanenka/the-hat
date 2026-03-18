@@ -22,6 +22,10 @@ internal static class RoomContractMappingExtensions
             .OrderBy(player => player.OrderIndex)
             .Select(player => player.ToDto())
             .ToList(),
+        room.GetSubmissionProgress()
+            .Select(progress => progress.ToDto())
+            .ToList(),
+        room.GetLobbyReadiness().ToDto(),
         room.Words.Select(word => word.ToDto()).ToList(),
         room.Rounds
             .OrderBy(round => round.RoundNumber)
@@ -44,6 +48,16 @@ internal static class RoomContractMappingExtensions
         player.IsActive,
         player.OrderIndex,
         player.Score);
+
+    private static PlayerSubmissionProgressDto ToDto(this PlayerSubmissionProgress progress) => new(
+        progress.PlayerId,
+        progress.SubmittedCount,
+        progress.RequiredCount,
+        progress.IsComplete);
+
+    private static LobbyReadinessDto ToDto(this LobbyReadiness readiness) => new(
+        readiness.CanStart,
+        readiness.BlockingReasons.ToList());
 
     private static WordSubmissionDto ToDto(this WordEntry word) => new(
         word.Id,

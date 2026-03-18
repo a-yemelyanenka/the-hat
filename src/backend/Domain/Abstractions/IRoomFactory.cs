@@ -4,6 +4,8 @@ public interface IRoomFactory
 {
     void ValidateCreateRoom(string hostDisplayName, RoomSettings settings);
 
+    void ValidateSettings(RoomSettings settings);
+
     RoomState CreateRoom(
         string hostDisplayName,
         RoomSettings settings,
