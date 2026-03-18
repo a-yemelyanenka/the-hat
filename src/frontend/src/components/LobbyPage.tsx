@@ -1,15 +1,16 @@
-import type { CreateRoomResponseDto } from '../contracts/theHatContracts'
+import type { RoomSnapshotDto } from '../contracts/theHatContracts'
 import type { CopyState } from '../appModels'
 import './LobbyPage.css'
 
 type LobbyPageProps = {
-  room: CreateRoomResponseDto | null
+  room: RoomSnapshotDto | null
+  inviteLink: string
   copyState: CopyState
   onCopyInviteLink: () => void
   onCreateRoom: () => void
 }
 
-export function LobbyPage({ room, copyState, onCopyInviteLink, onCreateRoom }: LobbyPageProps) {
+export function LobbyPage({ room, inviteLink, copyState, onCopyInviteLink, onCreateRoom }: LobbyPageProps) {
   if (!room) {
     return (
       <main className="app-shell app-shell-narrow">
@@ -17,7 +18,7 @@ export function LobbyPage({ room, copyState, onCopyInviteLink, onCreateRoom }: L
           <p className="eyebrow">Lobby</p>
           <h1>Room data is not available in this session</h1>
           <p className="lead">
-            Create a new room to continue. Full lobby loading from invite links comes in a later issue.
+            Create a new room or reopen an invite link to continue in the current browser session.
           </p>
           <button className="button button-primary" type="button" onClick={onCreateRoom}>
             Create another room
@@ -27,7 +28,7 @@ export function LobbyPage({ room, copyState, onCopyInviteLink, onCreateRoom }: L
     )
   }
 
-  const hostPlayer = room.room.players.find((player) => player.playerId === room.room.hostPlayerId)
+  const hostPlayer = room.players.find((player) => player.playerId === room.hostPlayerId)
 
   return (
     <main className="app-shell">
@@ -36,7 +37,7 @@ export function LobbyPage({ room, copyState, onCopyInviteLink, onCreateRoom }: L
           <p className="eyebrow">Lobby</p>
           <h1>Room ready for players</h1>
           <p className="lead">
-            The room was created successfully and the host has been routed into the lobby.
+            Players can join from the invite link and appear in this saved lobby snapshot.
           </p>
         </div>
         <button className="button button-secondary" type="button" onClick={onCreateRoom}>
@@ -47,9 +48,9 @@ export function LobbyPage({ room, copyState, onCopyInviteLink, onCreateRoom }: L
       <section className="lobby-grid">
         <article className="panel invite-panel">
           <h2>Invite</h2>
-          <p className="invite-code">{room.room.inviteCode}</p>
-          <a className="invite-link" href={room.inviteLink}>
-            {room.inviteLink}
+          <p className="invite-code">{room.inviteCode}</p>
+          <a className="invite-link" href={inviteLink}>
+            {inviteLink}
           </a>
           <div className="invite-actions">
             <button className="button button-primary" type="button" onClick={onCopyInviteLink}>
@@ -69,15 +70,15 @@ export function LobbyPage({ room, copyState, onCopyInviteLink, onCreateRoom }: L
             </div>
             <div>
               <dt>Words per player</dt>
-              <dd>{room.room.settings.wordsPerPlayer}</dd>
+              <dd>{room.settings.wordsPerPlayer}</dd>
             </div>
             <div>
               <dt>Turn timer</dt>
-              <dd>{room.room.settings.turnDurationSeconds} seconds</dd>
+              <dd>{room.settings.turnDurationSeconds} seconds</dd>
             </div>
             <div>
               <dt>Order mode</dt>
-              <dd>{room.room.settings.playerOrderMode === 'random' ? 'Random' : 'Manual'}</dd>
+              <dd>{room.settings.playerOrderMode === 'random' ? 'Random' : 'Manual'}</dd>
             </div>
           </dl>
         </article>
@@ -85,7 +86,7 @@ export function LobbyPage({ room, copyState, onCopyInviteLink, onCreateRoom }: L
         <article className="panel">
           <h2>Players</h2>
           <ul className="player-list">
-            {room.room.players.map((player) => (
+            {room.players.map((player) => (
               <li key={player.playerId}>
                 <span>{player.displayName}</span>
                 {player.isHost ? <span className="status-pill">Host</span> : null}

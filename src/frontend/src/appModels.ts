@@ -3,6 +3,7 @@ import type { PlayerOrderMode } from './contracts/theHatContracts'
 export type Route =
   | { name: 'home' }
   | { name: 'create-room' }
+  | { name: 'join-room'; inviteCode: string }
   | { name: 'lobby'; roomId: string }
 
 export type CreateRoomFormState = {

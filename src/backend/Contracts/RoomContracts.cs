@@ -55,8 +55,7 @@ public sealed record CreateRoomRequestDto(
     RoomSettingsDto Settings);
 
 public sealed record CreateRoomResponseDto(
-    RoomSnapshotDto Room,
-    string InviteLink);
+    RoomSnapshotDto Room);
 
 public sealed record JoinRoomRequestDto(
     string DisplayName);

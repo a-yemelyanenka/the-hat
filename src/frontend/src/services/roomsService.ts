@@ -1,6 +1,8 @@
 import type {
   CreateRoomRequestDto,
   CreateRoomResponseDto,
+  JoinRoomRequestDto,
+  RoomSnapshotDto,
 } from '../contracts/theHatContracts'
 import type { ValidationProblemDetails } from '../appModels'
 
@@ -61,4 +63,49 @@ export async function createRoom(request: CreateRoomRequestDto): Promise<CreateR
   }
 
   return responseBody as CreateRoomResponseDto
+}
+
+export async function joinRoom(inviteCode: string, request: JoinRoomRequestDto): Promise<RoomSnapshotDto> {
+  if (!API_BASE_URL) {
+    throw new RoomServiceError('VITE_API_BASE_URL is not configured.')
+  }
+
+  let response: Response
+
+  try {
+    response = await fetch(`${API_BASE_URL}/api/rooms/invite/${encodeURIComponent(inviteCode)}/join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    })
+  } catch {
+    throw new RoomServiceError('Could not reach the backend. Check that the API is running.')
+  }
+
+  const contentType = response.headers.get('content-type') ?? ''
+  const hasJsonBody = contentType.includes('application/json')
+  const responseBody = hasJsonBody ? ((await response.json()) as unknown) : null
+
+  if (!response.ok) {
+    if (response.status === 400) {
+      throw new RoomServiceError('Validation failed.', {
+        statusCode: response.status,
+        validationProblem: responseBody as ValidationProblemDetails,
+      })
+    }
+
+    if (response.status === 404) {
+      throw new RoomServiceError('This invite link is invalid or the room no longer exists.', {
+        statusCode: response.status,
+      })
+    }
+
+    throw new RoomServiceError('Joining the room failed. Try again in a moment.', {
+      statusCode: response.status,
+    })
+  }
+
+  return responseBody as RoomSnapshotDto
 }

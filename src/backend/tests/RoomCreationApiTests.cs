@@ -35,7 +35,7 @@ public sealed class RoomCreationApiTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task CreateRoom_CreatesLobbyRoomWithHostAndInviteLink()
+    public async Task CreateRoom_CreatesLobbyRoomWithHost()
     {
         using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
         {
@@ -62,7 +62,6 @@ public sealed class RoomCreationApiTests : IAsyncDisposable
         Assert.False(string.IsNullOrWhiteSpace(payload!.Room.RoomId));
         Assert.False(string.IsNullOrWhiteSpace(payload.Room.HostPlayerId));
         Assert.Equal(payload.Room.InviteCode, payload.Room.InviteCode.ToUpperInvariant());
-        Assert.Equal($"http://localhost/join/{payload.Room.InviteCode}", payload.InviteLink);
         Assert.Equal(RoomPhase.Lobby, payload.Room.Phase);
         Assert.Null(payload.Room.CurrentRoundNumber);
         Assert.Null(payload.Room.CurrentTurn);

@@ -25,7 +25,7 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 ## Epic 2: Room creation and lobby
 - [x] Issue 6 — Implement room creation API
 - [x] Issue 7 — Build create-room screen in React
-- [ ] Issue 8 — Implement join-room flow with display name entry
+- [x] Issue 8 — Implement join-room flow with display name entry
 - [ ] Issue 9 — Build live lobby screen with player list and readiness state
 - [ ] Issue 10 — Implement host editing of room settings after players join
 - [ ] Issue 11 — Implement player ordering management
@@ -78,7 +78,7 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 5 | Done | Added backend xUnit test project covering scoring, round flow, timer expiry, duplicate words, inactive players, rejoin matching, and persistence restore. |  |
 | 6 | Done | Added `POST /api/rooms` with room persistence, invite-link generation, and validation for initial lobby settings. |  |
 | 7 | Done | Added a responsive create-room flow with form validation, backend integration, and host routing into a simple lobby screen. |  |
-| 8 | Not started |  |  |
+| 8 | Done | Added invite-link join routing, join-room API validation, and lobby snapshots that include the host plus newly joined players. |  |
 | 9 | Not started |  |  |
 | 10 | Not started |  |  |
 | 11 | Not started |  |  |

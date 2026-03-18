@@ -63,7 +63,6 @@ export interface CreateRoomRequestDto {
 
 export interface CreateRoomResponseDto {
   room: RoomSnapshotDto
-  inviteLink: string
 }
 
 export interface JoinRoomRequestDto {

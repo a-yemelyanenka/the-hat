@@ -3,12 +3,14 @@ import type { FormEvent } from 'react'
 import './App.css'
 import { CreateRoomPage } from './components/CreateRoomPage'
 import { HomePage } from './components/HomePage'
+import { JoinRoomPage } from './components/JoinRoomPage'
 import { LobbyPage } from './components/LobbyPage'
 import type {
   CreateRoomRequestDto,
-  CreateRoomResponseDto,
+  JoinRoomRequestDto,
+  RoomSnapshotDto,
 } from './contracts/theHatContracts'
-import { createRoom, RoomServiceError } from './services/roomsService'
+import { createRoom, joinRoom, RoomServiceError } from './services/roomsService'
 import type {
   CopyState,
   CreateRoomFormState,
@@ -24,6 +26,11 @@ function getRoute(pathname: string): Route {
     return { name: 'create-room' }
   }
 
+  const joinMatch = pathname.match(/^\/join\/([^/]+)\/?$/)
+  if (joinMatch) {
+    return { name: 'join-room', inviteCode: joinMatch[1] }
+  }
+
   const lobbyMatch = pathname.match(/^\/rooms\/([^/]+)\/lobby\/?$/)
   if (lobbyMatch) {
     return { name: 'lobby', roomId: lobbyMatch[1] }
@@ -32,7 +39,25 @@ function getRoute(pathname: string): Route {
   return { name: 'home' }
 }
 
-function loadStoredRoom(): CreateRoomResponseDto | null {
+function extractStoredRoomSnapshot(value: unknown): RoomSnapshotDto | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const directRoom = value as { roomId?: unknown }
+  if (typeof directRoom.roomId === 'string') {
+    return value as RoomSnapshotDto
+  }
+
+  const nestedRoom = value as { room?: { roomId?: unknown } }
+  if (nestedRoom.room && typeof nestedRoom.room.roomId === 'string') {
+    return nestedRoom.room as RoomSnapshotDto
+  }
+
+  return null
+}
+
+function loadStoredRoom(): RoomSnapshotDto | null {
   const stored = window.sessionStorage.getItem(STORAGE_KEY)
 
   if (!stored) {
@@ -40,11 +65,15 @@ function loadStoredRoom(): CreateRoomResponseDto | null {
   }
 
   try {
-    return JSON.parse(stored) as CreateRoomResponseDto
+    return extractStoredRoomSnapshot(JSON.parse(stored))
   } catch {
     window.sessionStorage.removeItem(STORAGE_KEY)
     return null
   }
+}
+
+function buildInviteLink(inviteCode: string): string {
+  return `${window.location.origin}/join/${inviteCode}`
 }
 
 function App() {
@@ -53,8 +82,12 @@ function App() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [serverError, setServerError] = useState<string>('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [createdRoom, setCreatedRoom] = useState<CreateRoomResponseDto | null>(() => loadStoredRoom())
+  const [roomSession, setRoomSession] = useState<RoomSnapshotDto | null>(() => loadStoredRoom())
   const [copyState, setCopyState] = useState<CopyState>('idle')
+  const [joinDisplayName, setJoinDisplayName] = useState('')
+  const [joinFieldError, setJoinFieldError] = useState('')
+  const [joinServerError, setJoinServerError] = useState('')
+  const [isJoining, setIsJoining] = useState(false)
 
   useEffect(() => {
     const handlePopState = () => {
@@ -66,21 +99,21 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (createdRoom) {
-      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(createdRoom))
+    if (roomSession) {
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(roomSession))
       return
     }
 
     window.sessionStorage.removeItem(STORAGE_KEY)
-  }, [createdRoom])
+  }, [roomSession])
 
   const lobbyRoom = useMemo(() => {
-    if (route.name !== 'lobby' || !createdRoom) {
+    if (route.name !== 'lobby' || !roomSession) {
       return null
     }
 
-    return createdRoom.room.roomId === route.roomId ? createdRoom : null
-  }, [createdRoom, route])
+    return roomSession.roomId === route.roomId ? roomSession : null
+  }, [roomSession, route])
 
   const navigate = (nextPath: string) => {
     window.history.pushState({}, '', nextPath)
@@ -131,6 +164,13 @@ function App() {
     setServerError(problem.title && Object.keys(nextErrors).length === 0 ? problem.title : '')
   }
 
+  const applyJoinValidationProblem = (problem: ValidationProblemDetails) => {
+    const message = Object.entries(problem.errors ?? {}).find(([key]) => key.toLowerCase() === 'displayname')?.[1]?.[0]
+
+    setJoinFieldError(message ?? '')
+    setJoinServerError(problem.title && !message ? problem.title : '')
+  }
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
@@ -157,7 +197,7 @@ function App() {
 
     try {
       const result = await createRoom(payload)
-      setCreatedRoom(result)
+      setRoomSession(result.room)
       navigate(`/rooms/${result.room.roomId}/lobby`)
     } catch (error) {
       if (error instanceof RoomServiceError) {
@@ -176,13 +216,56 @@ function App() {
     }
   }
 
+  const handleJoinSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    if (route.name !== 'join-room') {
+      return
+    }
+
+    if (!joinDisplayName.trim()) {
+      setJoinFieldError('Enter your display name.')
+      setJoinServerError('')
+      return
+    }
+
+    setIsJoining(true)
+    setJoinFieldError('')
+    setJoinServerError('')
+    setCopyState('idle')
+
+    const payload: JoinRoomRequestDto = {
+      displayName: joinDisplayName.trim(),
+    }
+
+    try {
+      const result = await joinRoom(route.inviteCode, payload)
+      setRoomSession(result)
+      navigate(`/rooms/${result.roomId}/lobby`)
+    } catch (error) {
+      if (error instanceof RoomServiceError) {
+        if (error.validationProblem) {
+          applyJoinValidationProblem(error.validationProblem)
+          return
+        }
+
+        setJoinServerError(error.message)
+        return
+      }
+
+      setJoinServerError('Joining the room failed. Try again in a moment.')
+    } finally {
+      setIsJoining(false)
+    }
+  }
+
   const copyInviteLink = async () => {
     if (!lobbyRoom) {
       return
     }
 
     try {
-      await navigator.clipboard.writeText(lobbyRoom.inviteLink)
+      await navigator.clipboard.writeText(buildInviteLink(lobbyRoom.inviteCode))
       setCopyState('copied')
     } catch {
       setCopyState('failed')
@@ -208,10 +291,26 @@ function App() {
     )
   }
 
+  if (route.name === 'join-room') {
+    return (
+      <JoinRoomPage
+        inviteCode={route.inviteCode}
+        displayName={joinDisplayName}
+        fieldError={joinFieldError}
+        serverError={joinServerError}
+        isSubmitting={isJoining}
+        onBack={() => navigate('/')}
+        onSubmit={handleJoinSubmit}
+        onDisplayNameChange={setJoinDisplayName}
+      />
+    )
+  }
+
   if (route.name === 'lobby') {
     return (
       <LobbyPage
         room={lobbyRoom}
+        inviteLink={lobbyRoom ? buildInviteLink(lobbyRoom.inviteCode) : ''}
         copyState={copyState}
         onCopyInviteLink={copyInviteLink}
         onCreateRoom={() => navigate('/create-room')}
