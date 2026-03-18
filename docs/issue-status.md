@@ -42,14 +42,14 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 - [ ] Issue 18 — Handle player leave/disconnect state mid-game
 
 ## Epic 5: Game engine and rules
-- [ ] Issue 19 — Implement game state machine for rounds, turns, and room phases
-- [ ] Issue 20 — Implement turn rotation based on ordered player ring
-- [ ] Issue 21 — Implement round-specific rule enforcement
-- [ ] Issue 22 — Implement word draw, guess confirmation, and no-skip rule
-- [ ] Issue 23 — Implement turn timer and timeout behavior
-- [ ] Issue 24 — Implement reshuffle logic for each round
-- [ ] Issue 25 — Implement end-of-round and final scoring summary
-- [ ] Issue 26 — Implement host pause/resume controls
+- [x] Issue 19 — Implement game state machine for rounds, turns, and room phases
+- [x] Issue 20 — Implement turn rotation based on ordered player ring
+- [x] Issue 21 — Implement round-specific rule enforcement
+- [x] Issue 22 — Implement word draw, guess confirmation, and no-skip rule
+- [x] Issue 23 — Implement turn timer and timeout behavior
+- [x] Issue 24 — Implement reshuffle logic for each round
+- [x] Issue 25 — Implement end-of-round and final scoring summary
+- [x] Issue 26 — Implement host pause/resume controls
 
 ## Epic 6: Gameplay UI
 - [ ] Issue 27 — Build active turn screen for explainer and observers
@@ -89,14 +89,14 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 16 | Done | Added SignalR-based room snapshot updates, automatic reconnect/resubscribe, and frontend polling fallback when realtime is unavailable. |  |
 | 17 | Done | Added invite-based rejoin API plus join-flow recovery so the same trimmed display name restores the existing player entry without creating duplicates. |  |
 | 18 | Not started |  |  |
-| 19 | Not started |  |  |
-| 20 | Not started |  |  |
-| 21 | Not started |  |  |
-| 22 | Not started |  |  |
-| 23 | Not started |  |  |
-| 24 | Not started |  |  |
-| 25 | Not started |  |  |
-| 26 | Not started |  |  |
+| 19 | Done | Added an explicit gameplay state machine with `InProgress`, `Paused`, `RoundSummary`, and `Completed` room phases. |  |
+| 20 | Done | Turn rotation now follows the ordered active player ring and carries rotation forward across rounds. |  |
+| 21 | Done | Each round now stores and exposes its specific rule so the frontend can show the active instructions. |  |
+| 22 | Done | Turns auto-draw one word at a time, only the explainer can confirm guesses, and there is no skip path. |  |
+| 23 | Done | Turns now track a synchronized deadline, expire automatically on state refresh, and return the unfinished word to the hat. |  |
+| 24 | Done | Round 2 and 3 rebuild from the original submitted word multiset and reshuffle duplicates correctly. |  |
+| 25 | Done | Added round-summary and final-results states plus a gameplay UI with cumulative ranking and tie visibility. |  |
+| 26 | Done | Added host pause/resume backend actions and frontend controls that freeze and restore the active turn timer. |  |
 | 27 | Not started |  |  |
 | 28 | Not started |  |  |
 | 29 | Not started |  |  |

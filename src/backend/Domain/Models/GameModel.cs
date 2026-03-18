@@ -11,7 +11,8 @@ public enum RoomPhase
     Lobby = 1,
     InProgress = 2,
     Paused = 3,
-    Completed = 4,
+    RoundSummary = 4,
+    Completed = 5,
 }
 
 public enum RoundRule
@@ -110,11 +111,36 @@ public sealed record TurnState
 
     public string? ActiveWordId { get; set; }
 
+    public int DurationSeconds { get; init; }
+
     public DateTime StartedAtUtc { get; init; }
+
+    public DateTime EndsAtUtc { get; set; }
+
+    public DateTime? PausedAtUtc { get; set; }
+
+    public int? RemainingSecondsWhenPaused { get; set; }
 
     public DateTime? ExpiredAtUtc { get; set; }
 
     public DateTime? CompletedAtUtc { get; set; }
+}
+
+public sealed record PlayerGameplayState
+{
+    public RoomState Room { get; init; } = new();
+
+    public string PlayerId { get; init; } = string.Empty;
+
+    public RoundRule? CurrentRule { get; init; }
+
+    public string? ActiveWordText { get; init; }
+
+    public int? RemainingTurnSeconds { get; init; }
+
+    public bool IsCurrentPlayerExplainer { get; init; }
+
+    public bool IsCurrentPlayerGuesser { get; init; }
 }
 
 public sealed record RoomState
@@ -136,6 +162,10 @@ public sealed record RoomState
     public List<RoundState> Rounds { get; init; } = [];
 
     public int? CurrentRoundNumber { get; set; }
+
+    public string? LastCompletedExplainerPlayerId { get; set; }
+
+    public int LastCompletedTurnNumber { get; set; }
 
     public TurnState? CurrentTurn { get; set; }
 
@@ -283,5 +313,15 @@ public sealed record RoomState
         {
             shuffledPlayers[index].OrderIndex = index;
         }
+    }
+
+    public RoundState? TryGetCurrentRound()
+    {
+        if (CurrentRoundNumber is null)
+        {
+            return null;
+        }
+
+        return Rounds.SingleOrDefault(round => round.RoundNumber == CurrentRoundNumber.Value);
     }
 }

@@ -1,17 +1,32 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import './App.css'
 import { CreateRoomPage } from './components/CreateRoomPage'
+import { GameplayPage } from './components/GameplayPage'
 import { HomePage } from './components/HomePage'
 import { JoinRoomPage } from './components/JoinRoomPage'
 import { LobbyPage } from './components/LobbyPage'
 import type {
   CreateRoomRequestDto,
+  GameplayViewDto,
   JoinRoomRequestDto,
   RoomSnapshotDto,
 } from './contracts/theHatContracts'
 import { createRoomRealtimeConnection } from './services/roomRealtimeService'
-import { createRoom, getRoom, joinRoom, rejoinRoom, RoomServiceError, startGame, updateRoomSettings } from './services/roomsService'
+import {
+  confirmGuess,
+  continueRound,
+  createRoom,
+  getGameplayView,
+  getRoom,
+  joinRoom,
+  pauseGame,
+  rejoinRoom,
+  resumeGame,
+  RoomServiceError,
+  startGame,
+  updateRoomSettings,
+} from './services/roomsService'
 import type {
   CopyState,
   CreateRoomFormState,
@@ -26,6 +41,7 @@ import { defaultFormState } from './appModels'
 
 const STORAGE_KEY = 'the-hat:room-session'
 const LOBBY_REFRESH_INTERVAL_MS = 3000
+const GAMEPLAY_REFRESH_INTERVAL_MS = 1000
 
 function getRoute(pathname: string): Route {
   if (pathname === '/create-room') {
@@ -152,6 +168,14 @@ function App() {
   const [lobbySettingsSuccess, setLobbySettingsSuccess] = useState('')
   const [isStartingGame, setIsStartingGame] = useState(false)
   const [lobbyStartError, setLobbyStartError] = useState('')
+  const [gameplayView, setGameplayView] = useState<GameplayViewDto | null>(null)
+  const [gameplayError, setGameplayError] = useState('')
+  const [isGameplayRefreshing, setIsGameplayRefreshing] = useState(false)
+  const [isConfirmingGuess, setIsConfirmingGuess] = useState(false)
+  const [isPausingGame, setIsPausingGame] = useState(false)
+  const [isResumingGame, setIsResumingGame] = useState(false)
+  const [isContinuingRound, setIsContinuingRound] = useState(false)
+  const [gameplayActionError, setGameplayActionError] = useState('')
 
   useEffect(() => {
     const handlePopState = () => {
@@ -180,6 +204,48 @@ function App() {
   }, [roomSession, route])
 
   const lobbyRoomId = lobbySession?.room.roomId ?? null
+  const lobbyPlayerId = lobbySession?.currentPlayerId ?? null
+  const isGameplayActive = Boolean(lobbySession && lobbySession.room.phase !== 'lobby')
+
+  const updateRoomSessionSnapshot = useCallback((updatedRoom: RoomSnapshotDto) => {
+    setRoomSession((current) =>
+      current && current.room.roomId === updatedRoom.roomId
+        ? {
+            ...current,
+            room: updatedRoom,
+          }
+        : current,
+    )
+  }, [])
+
+  const loadGameplayView = useCallback(
+    async (roomId: string, playerId: string, backgroundRefresh: boolean) => {
+      if (!backgroundRefresh) {
+        setIsGameplayRefreshing(true)
+      }
+
+      try {
+        const refreshedGameplayView = await getGameplayView(roomId, playerId)
+        setGameplayView(refreshedGameplayView)
+        updateRoomSessionSnapshot(refreshedGameplayView.room)
+        setGameplayError('')
+        return refreshedGameplayView
+      } catch (error) {
+        if (error instanceof RoomServiceError) {
+          setGameplayError(error.message)
+        } else {
+          setGameplayError('Loading the gameplay view failed. Try again in a moment.')
+        }
+
+        return null
+      } finally {
+        if (!backgroundRefresh) {
+          setIsGameplayRefreshing(false)
+        }
+      }
+    },
+    [updateRoomSessionSnapshot],
+  )
 
   useEffect(() => {
     if (!lobbyRoomId) {
@@ -210,16 +276,7 @@ function App() {
           return
         }
 
-        setRoomSession((current) => {
-          if (!current || current.room.roomId !== refreshedRoom.roomId) {
-            return current
-          }
-
-          return {
-            ...current,
-            room: refreshedRoom,
-          }
-        })
+        updateRoomSessionSnapshot(refreshedRoom)
         setLobbySyncError('')
       } catch (error) {
         if (isDisposed) {
@@ -268,16 +325,7 @@ function App() {
           return
         }
 
-        setRoomSession((current) => {
-          if (!current || current.room.roomId !== refreshedRoom.roomId) {
-            return current
-          }
-
-          return {
-            ...current,
-            room: refreshedRoom,
-          }
-        })
+        updateRoomSessionSnapshot(refreshedRoom)
         setLobbyRealtimeSyncState('connected')
         setLobbySyncError('')
       },
@@ -312,7 +360,38 @@ function App() {
         await connection?.stop()
       })
     }
-  }, [lobbyRoomId])
+  }, [lobbyRoomId, updateRoomSessionSnapshot])
+
+  useEffect(() => {
+    if (!lobbyRoomId || !lobbyPlayerId || !isGameplayActive) {
+      setGameplayView(null)
+      setGameplayError('')
+      setIsGameplayRefreshing(false)
+      return
+    }
+
+    let isDisposed = false
+    const roomId = lobbyRoomId
+    const playerId = lobbyPlayerId
+
+    const refreshGameplay = async (backgroundRefresh: boolean) => {
+      const refreshedGameplayView = await loadGameplayView(roomId, playerId, backgroundRefresh)
+      if (isDisposed || !refreshedGameplayView) {
+        return
+      }
+    }
+
+    void refreshGameplay(false)
+
+    const intervalId = window.setInterval(() => {
+      void refreshGameplay(true)
+    }, GAMEPLAY_REFRESH_INTERVAL_MS)
+
+    return () => {
+      isDisposed = true
+      window.clearInterval(intervalId)
+    }
+  }, [isGameplayActive, loadGameplayView, lobbyPlayerId, lobbyRoomId])
 
   const navigate = (nextPath: string) => {
     window.history.pushState({}, '', nextPath)
@@ -526,14 +605,7 @@ function App() {
         orderedPlayerIds,
       })
 
-      setRoomSession((current) =>
-        current && current.room.roomId === updatedRoom.roomId
-          ? {
-              ...current,
-              room: updatedRoom,
-            }
-          : current,
-      )
+      updateRoomSessionSnapshot(updatedRoom)
       setLobbySettingsSuccess('Lobby settings saved.')
       return true
     } catch (error) {
@@ -563,14 +635,8 @@ function App() {
         hostPlayerId: lobbySession.currentPlayerId,
       })
 
-      setRoomSession((current) =>
-        current && current.room.roomId === updatedRoom.roomId
-          ? {
-              ...current,
-              room: updatedRoom,
-            }
-          : current,
-      )
+      updateRoomSessionSnapshot(updatedRoom)
+      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
     } catch (error) {
       if (error instanceof RoomServiceError) {
         setLobbyStartError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
@@ -583,15 +649,116 @@ function App() {
     }
   }
 
+  const handleConfirmGuess = async (): Promise<void> => {
+    if (!lobbySession) {
+      return
+    }
+
+    setIsConfirmingGuess(true)
+    setGameplayActionError('')
+
+    try {
+      const updatedRoom = await confirmGuess(lobbySession.room.roomId, {
+        playerId: lobbySession.currentPlayerId,
+      })
+
+      updateRoomSessionSnapshot(updatedRoom)
+      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
+    } catch (error) {
+      if (error instanceof RoomServiceError) {
+        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        return
+      }
+
+      setGameplayActionError('Confirming the guess failed. Try again in a moment.')
+    } finally {
+      setIsConfirmingGuess(false)
+    }
+  }
+
+  const handlePauseGame = async (): Promise<void> => {
+    if (!lobbySession) {
+      return
+    }
+
+    setIsPausingGame(true)
+    setGameplayActionError('')
+
+    try {
+      const updatedRoom = await pauseGame(lobbySession.room.roomId, {
+        hostPlayerId: lobbySession.currentPlayerId,
+      })
+
+      updateRoomSessionSnapshot(updatedRoom)
+      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
+    } catch (error) {
+      if (error instanceof RoomServiceError) {
+        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        return
+      }
+
+      setGameplayActionError('Pausing the game failed. Try again in a moment.')
+    } finally {
+      setIsPausingGame(false)
+    }
+  }
+
+  const handleResumeGame = async (): Promise<void> => {
+    if (!lobbySession) {
+      return
+    }
+
+    setIsResumingGame(true)
+    setGameplayActionError('')
+
+    try {
+      const updatedRoom = await resumeGame(lobbySession.room.roomId, {
+        hostPlayerId: lobbySession.currentPlayerId,
+      })
+
+      updateRoomSessionSnapshot(updatedRoom)
+      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
+    } catch (error) {
+      if (error instanceof RoomServiceError) {
+        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        return
+      }
+
+      setGameplayActionError('Resuming the game failed. Try again in a moment.')
+    } finally {
+      setIsResumingGame(false)
+    }
+  }
+
+  const handleContinueRound = async (): Promise<void> => {
+    if (!lobbySession) {
+      return
+    }
+
+    setIsContinuingRound(true)
+    setGameplayActionError('')
+
+    try {
+      const updatedRoom = await continueRound(lobbySession.room.roomId, {
+        hostPlayerId: lobbySession.currentPlayerId,
+      })
+
+      updateRoomSessionSnapshot(updatedRoom)
+      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
+    } catch (error) {
+      if (error instanceof RoomServiceError) {
+        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        return
+      }
+
+      setGameplayActionError('Starting the next round failed. Try again in a moment.')
+    } finally {
+      setIsContinuingRound(false)
+    }
+  }
+
   const handleLobbyRoomUpdated = (updatedRoom: RoomSnapshotDto) => {
-    setRoomSession((current) =>
-      current && current.room.roomId === updatedRoom.roomId
-        ? {
-            ...current,
-            room: updatedRoom,
-          }
-        : current,
-    )
+    updateRoomSessionSnapshot(updatedRoom)
   }
 
   if (route.name === 'create-room') {
@@ -629,6 +796,31 @@ function App() {
   }
 
   if (route.name === 'lobby') {
+    if (isGameplayActive) {
+      return (
+        <GameplayPage
+          session={lobbySession}
+          gameplayView={gameplayView}
+          syncError={gameplayError || lobbySyncError}
+          realtimeSyncState={lobbyRealtimeSyncState}
+          isRefreshing={isGameplayRefreshing || isLobbyRefreshing}
+          isConfirmingGuess={isConfirmingGuess}
+          isPausingGame={isPausingGame}
+          isResumingGame={isResumingGame}
+          isContinuingRound={isContinuingRound}
+          actionError={gameplayActionError}
+          onConfirmGuess={handleConfirmGuess}
+          onPauseGame={handlePauseGame}
+          onResumeGame={handleResumeGame}
+          onContinueRound={handleContinueRound}
+          onCreateRoom={() => navigate('/create-room')}
+          copyState={copyState}
+          inviteLink={lobbySession ? buildInviteLink(lobbySession.room.inviteCode) : ''}
+          onCopyInviteLink={copyInviteLink}
+        />
+      )
+    }
+
     return (
       <LobbyPage
         session={lobbySession}

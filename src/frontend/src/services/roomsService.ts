@@ -1,9 +1,14 @@
 import type {
+  ConfirmGuessRequestDto,
+  ContinueRoundRequestDto,
   CreateRoomRequestDto,
   CreateRoomResponseDto,
+  GameplayViewDto,
   JoinRoomRequestDto,
+  PauseGameRequestDto,
   PlayerWordSubmissionDto,
   RejoinRoomRequestDto,
+  ResumeGameRequestDto,
   RoomSnapshotDto,
   StartGameRequestDto,
   SubmitWordsRequestDto,
@@ -117,6 +122,70 @@ export async function startGame(roomId: string, request: StartGameRequestDto): P
     defaultErrorMessage: 'Starting the game failed. Try again in a moment.',
     notFoundMessage: 'This room no longer exists.',
   })
+}
+
+export async function getGameplayView(roomId: string, playerId: string): Promise<GameplayViewDto> {
+  return sendJsonRequest<GameplayViewDto>(
+    getApiBaseUrl(),
+    `/api/rooms/${encodeURIComponent(roomId)}/gameplay?playerId=${encodeURIComponent(playerId)}`,
+    {
+      method: 'GET',
+      defaultErrorMessage: 'Loading the gameplay view failed. Try again in a moment.',
+      notFoundMessage: 'This room no longer exists.',
+    },
+  )
+}
+
+export async function confirmGuess(roomId: string, request: ConfirmGuessRequestDto): Promise<RoomSnapshotDto> {
+  return sendJsonRequest<RoomSnapshotDto>(
+    getApiBaseUrl(),
+    `/api/rooms/${encodeURIComponent(roomId)}/gameplay/guesses/confirm`,
+    {
+      method: 'POST',
+      body: request,
+      defaultErrorMessage: 'Confirming the guess failed. Try again in a moment.',
+      notFoundMessage: 'This room no longer exists.',
+    },
+  )
+}
+
+export async function pauseGame(roomId: string, request: PauseGameRequestDto): Promise<RoomSnapshotDto> {
+  return sendJsonRequest<RoomSnapshotDto>(
+    getApiBaseUrl(),
+    `/api/rooms/${encodeURIComponent(roomId)}/gameplay/pause`,
+    {
+      method: 'POST',
+      body: request,
+      defaultErrorMessage: 'Pausing the game failed. Try again in a moment.',
+      notFoundMessage: 'This room no longer exists.',
+    },
+  )
+}
+
+export async function resumeGame(roomId: string, request: ResumeGameRequestDto): Promise<RoomSnapshotDto> {
+  return sendJsonRequest<RoomSnapshotDto>(
+    getApiBaseUrl(),
+    `/api/rooms/${encodeURIComponent(roomId)}/gameplay/resume`,
+    {
+      method: 'POST',
+      body: request,
+      defaultErrorMessage: 'Resuming the game failed. Try again in a moment.',
+      notFoundMessage: 'This room no longer exists.',
+    },
+  )
+}
+
+export async function continueRound(roomId: string, request: ContinueRoundRequestDto): Promise<RoomSnapshotDto> {
+  return sendJsonRequest<RoomSnapshotDto>(
+    getApiBaseUrl(),
+    `/api/rooms/${encodeURIComponent(roomId)}/gameplay/continue`,
+    {
+      method: 'POST',
+      body: request,
+      defaultErrorMessage: 'Continuing to the next round failed. Try again in a moment.',
+      notFoundMessage: 'This room no longer exists.',
+    },
+  )
 }
 
 type JsonRequestOptions = {

@@ -1,0 +1,85 @@
+.gameplay-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gameplay-status-row {
+  grid-template-columns: repeat(3, max-content);
+}
+
+.gameplay-panel {
+  align-content: start;
+}
+
+.gameplay-word-panel,
+.gameplay-scoreboard-panel,
+.gameplay-summary-panel {
+  grid-column: span 2;
+}
+
+.gameplay-rule-title,
+.active-word {
+  color: var(--text-h);
+}
+
+.active-word {
+  font-size: clamp(2rem, 5vw, 3.25rem);
+  font-weight: 800;
+  line-height: 1.05;
+  word-break: break-word;
+}
+
+.observer-copy {
+  max-width: 32rem;
+}
+
+.host-actions,
+.scoreboard-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.scoreboard-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.scoreboard-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 1rem;
+  background: var(--panel-muted);
+  border: 1px solid var(--border);
+}
+
+.inactive-player {
+  opacity: 0.72;
+}
+
+@media (max-width: 900px) {
+  .gameplay-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gameplay-word-panel,
+  .gameplay-scoreboard-panel,
+  .gameplay-summary-panel {
+    grid-column: span 1;
+  }
+
+  .gameplay-status-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .scoreboard-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

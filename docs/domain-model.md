@@ -25,16 +25,38 @@ The MVP foundation uses **SQLite** as the room and game-state store.
 - MVP behavior is to **restore room state after backend restart** as long as the SQLite file is preserved.
 - In Docker, the database file is stored in a named volume mounted at `/app/data`.
 
+### Schema management
+- SQLite schema changes are managed with **EF Core migrations**.
+- Backend startup applies pending migrations automatically.
+- Legacy local databases created before migrations existed should be deleted locally and recreated via migrations.
+
 ## Core domain entities
 
 | Entity | Purpose | Key fields |
 | --- | --- | --- |
-| `RoomState` | Aggregate root for a room and active game | `roomId`, `inviteCode`, `hostPlayerId`, `phase`, `settings`, `players`, `words`, `rounds`, `currentRoundNumber`, `currentTurn` |
+| `RoomState` | Aggregate root for a room and active game | `roomId`, `inviteCode`, `hostPlayerId`, `phase`, `settings`, `players`, `words`, `rounds`, `currentRoundNumber`, `lastCompletedExplainerPlayerId`, `lastCompletedTurnNumber`, `currentTurn` |
 | `RoomSettings` | Host-configurable rules | `wordsPerPlayer`, `turnDurationSeconds`, `playerOrderMode` |
 | `PlayerState` | Player identity, seat, and score | `id`, `displayName`, `normalizedDisplayName`, `isHost`, `isActive`, `orderIndex`, `score` |
 | `WordEntry` | Submitted word, including duplicates | `id`, `text`, `submittedByPlayerId` |
 | `RoundState` | Per-round word order and completion status | `roundNumber`, `rule`, `remainingWordIds`, `guessedWordIds`, `isCompleted` |
-| `TurnState` | Current explainer/guesser pair and active word | `turnNumber`, `explainerPlayerId`, `guesserPlayerId`, `activeWordId`, timestamps |
+| `TurnState` | Current explainer/guesser pair and active word | `turnNumber`, `explainerPlayerId`, `guesserPlayerId`, `activeWordId`, `durationSeconds`, `endsAtUtc`, pause/expiry timestamps |
+| `PlayerGameplayState` | Player-specific gameplay projection for the active screen | `room`, `playerId`, `currentRule`, `activeWordText`, `remainingTurnSeconds`, role flags |
+
+## Room phases and gameplay flow
+
+- `Lobby`: players join, submit words, and the host can edit settings.
+- `InProgress`: an active round and turn are running.
+- `Paused`: the host has paused the active turn and the timer is frozen.
+- `RoundSummary`: a round is complete and the host must explicitly continue to the next round.
+- `Completed`: round 3 is finished and the final ranking is visible.
+
+The backend now treats gameplay as an explicit state machine:
+- start game → create round 1 → start turn 1 → auto-draw first word
+- confirm guesses during a turn → score explainer and guesser → auto-draw the next word
+- expire a turn → return the active word to the hat → rotate to the next explainer/guesser pair
+- complete a round → enter `RoundSummary`
+- continue from summary → reshuffle the original word multiset and start the next round
+- complete round 3 → enter `Completed`
 
 ## Explicit game-rule representation
 
@@ -57,6 +79,8 @@ The MVP foundation uses **SQLite** as the room and game-state store.
 ### Timer expiry
 - If the timer expires with an active word in hand, that word is returned to the round queue as unguessed.
 - The turn is completed and the next active explainer/guesser pair is selected.
+- Turns store an absolute `endsAtUtc` deadline so every client can render the same countdown.
+- When the host pauses the game, the remaining seconds are frozen on the turn until resume.
 
 ### Duplicate words
 - Duplicate text is allowed.
@@ -78,6 +102,10 @@ Backend contract records live in [src/backend/Contracts/RoomContracts.cs](../src
 - `UpdateRoomSettingsRequestDto`
 - `SubmitWordsRequestDto`
 - `StartGameRequestDto`
+- `ConfirmGuessRequestDto`
+- `PauseGameRequestDto`
+- `ResumeGameRequestDto`
+- `ContinueRoundRequestDto`
 
 ### Snapshot/response DTOs
 - `CreateRoomResponseDto`
@@ -87,6 +115,7 @@ Backend contract records live in [src/backend/Contracts/RoomContracts.cs](../src
 - `WordSubmissionDto`
 - `RoundStateDto`
 - `TurnStateDto`
+- `GameplayViewDto`
 
 ### Realtime/domain events
 - `PlayerJoinedEventDto`
@@ -105,4 +134,4 @@ Backend contract records live in [src/backend/Contracts/RoomContracts.cs](../src
 
 The initial TypeScript mirror for these contracts lives in [src/frontend/src/contracts/theHatContracts.ts](../src/frontend/src/contracts/theHatContracts.ts).
 
-This keeps room, lobby, and gameplay flows explicit on the frontend, with the current room and lobby realtime transport now delivered through the SignalR room hub.
+This keeps room, lobby, and gameplay flows explicit on the frontend, with the current room and lobby realtime transport now delivered through the SignalR room hub. The gameplay screen uses the player-specific `GameplayViewDto` so only the active explainer receives the current word text.

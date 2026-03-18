@@ -47,9 +47,22 @@ public sealed record TurnStateDto(
     string ExplainerPlayerId,
     string GuesserPlayerId,
     string? ActiveWordId,
+    int DurationSeconds,
     DateTime StartedAtUtc,
+    DateTime EndsAtUtc,
+    DateTime? PausedAtUtc,
+    int? RemainingSecondsWhenPaused,
     DateTime? ExpiredAtUtc,
     DateTime? CompletedAtUtc);
+
+public sealed record GameplayViewDto(
+    RoomSnapshotDto Room,
+    string PlayerId,
+    RoundRule? CurrentRule,
+    string? ActiveWord,
+    int? RemainingTurnSeconds,
+    bool IsCurrentPlayerExplainer,
+    bool IsCurrentPlayerGuesser);
 
 public sealed record RoomSnapshotDto(
     string RoomId,
@@ -90,6 +103,18 @@ public sealed record SubmitWordsRequestDto(
     IReadOnlyList<string> Words);
 
 public sealed record StartGameRequestDto(
+    string HostPlayerId);
+
+public sealed record ConfirmGuessRequestDto(
+    string PlayerId);
+
+public sealed record PauseGameRequestDto(
+    string HostPlayerId);
+
+public sealed record ResumeGameRequestDto(
+    string HostPlayerId);
+
+public sealed record ContinueRoundRequestDto(
     string HostPlayerId);
 
 public abstract record RoomEventDto(

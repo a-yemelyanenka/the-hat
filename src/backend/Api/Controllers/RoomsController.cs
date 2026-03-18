@@ -12,6 +12,7 @@ public sealed class RoomsController(
     IRoomJoinService roomJoinService,
     IRoomLobbyService roomLobbyService,
     IRoomWordSubmissionService roomWordSubmissionService,
+    IRoomGameplayService roomGameplayService,
     IRoomRealtimeNotifier roomRealtimeNotifier) : ControllerBase
 {
     [HttpGet("{roomId}")]
@@ -30,6 +31,33 @@ public sealed class RoomsController(
         {
             return NotFound();
         }
+    }
+
+    [HttpGet("{roomId}/gameplay")]
+    [ProducesResponseType<GameplayViewDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<GameplayViewDto>> GetGameplay(
+        string roomId,
+        [FromQuery] string playerId,
+        CancellationToken cancellationToken)
+    {
+        PlayerGameplayState gameplayState;
+
+        try
+        {
+            gameplayState = await roomGameplayService.GetGameplayViewAsync(roomId, playerId, cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        return Ok(gameplayState.ToDto());
     }
 
     [HttpPost]
@@ -164,6 +192,118 @@ public sealed class RoomsController(
         try
         {
             room = await roomLobbyService.StartGameAsync(roomId, request.HostPlayerId, cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
+        return Ok(room.ToDto());
+    }
+
+    [HttpPost("{roomId}/gameplay/guesses/confirm")]
+    [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RoomSnapshotDto>> ConfirmGuess(
+        string roomId,
+        [FromBody] ConfirmGuessRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        RoomState room;
+
+        try
+        {
+            room = await roomGameplayService.ConfirmGuessAsync(roomId, request.PlayerId, cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
+        return Ok(room.ToDto());
+    }
+
+    [HttpPost("{roomId}/gameplay/pause")]
+    [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RoomSnapshotDto>> PauseGame(
+        string roomId,
+        [FromBody] PauseGameRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        RoomState room;
+
+        try
+        {
+            room = await roomGameplayService.PauseGameAsync(roomId, request.HostPlayerId, cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
+        return Ok(room.ToDto());
+    }
+
+    [HttpPost("{roomId}/gameplay/resume")]
+    [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RoomSnapshotDto>> ResumeGame(
+        string roomId,
+        [FromBody] ResumeGameRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        RoomState room;
+
+        try
+        {
+            room = await roomGameplayService.ResumeGameAsync(roomId, request.HostPlayerId, cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
+        return Ok(room.ToDto());
+    }
+
+    [HttpPost("{roomId}/gameplay/continue")]
+    [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RoomSnapshotDto>> ContinueRound(
+        string roomId,
+        [FromBody] ContinueRoundRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        RoomState room;
+
+        try
+        {
+            room = await roomGameplayService.ContinueToNextRoundAsync(roomId, request.HostPlayerId, cancellationToken);
         }
         catch (RoomNotFoundException)
         {

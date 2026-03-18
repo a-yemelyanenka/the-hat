@@ -15,8 +15,15 @@ public sealed class RoomLobbyService(
             throw new RoomNotFoundException(string.Empty);
         }
 
-        return await dbContext.Rooms.SingleOrDefaultAsync(room => room.RoomId == normalizedRoomId, cancellationToken)
+        var room = await dbContext.Rooms.SingleOrDefaultAsync(room => room.RoomId == normalizedRoomId, cancellationToken)
             ?? throw new RoomNotFoundException(normalizedRoomId);
+
+        if (roomEngine.AdvanceState(room))
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return room;
     }
 
     public async Task<RoomState> UpdateRoomSettingsAsync(

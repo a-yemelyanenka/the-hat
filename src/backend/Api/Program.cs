@@ -42,7 +42,7 @@ builder.Services.AddHealthChecks().AddDbContextCheck<TheHatDbContext>(name: "sql
 
 var app = builder.Build();
 
-await EnsureDatabaseCreatedAsync(app.Services);
+await EnsureDatabaseMigratedAsync(app.Services);
 
 if (app.Environment.IsDevelopment())
 {
@@ -95,11 +95,11 @@ static string[] ResolveCorsOrigins(IConfiguration configuration, IWebHostEnviron
     return configuredOrigins ?? [];
 }
 
-static async Task EnsureDatabaseCreatedAsync(IServiceProvider services)
+static async Task EnsureDatabaseMigratedAsync(IServiceProvider services)
 {
     await using var scope = services.CreateAsyncScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<TheHatDbContext>();
-    await dbContext.Database.EnsureCreatedAsync();
+    await dbContext.Database.MigrateAsync();
 }
 
 public partial class Program;

@@ -16,7 +16,7 @@ public sealed class TheHatDbContextTests : IDisposable
     {
         await using (var saveContext = CreateContext())
         {
-            await saveContext.Database.EnsureCreatedAsync();
+            await saveContext.Database.MigrateAsync();
             var room = CreateRoom(_displayNameNormalizer);
 
             saveContext.Rooms.Add(room);
@@ -113,7 +113,9 @@ public sealed class TheHatDbContextTests : IDisposable
                 ExplainerPlayerId = "player-1",
                 GuesserPlayerId = "player-2",
                 ActiveWordId = "word-3",
+                DurationSeconds = 60,
                 StartedAtUtc = timestamp,
+                EndsAtUtc = timestamp.AddSeconds(60),
             },
             CreatedAtUtc = timestamp,
             UpdatedAtUtc = timestamp,

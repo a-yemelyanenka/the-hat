@@ -41,6 +41,15 @@ internal static class RoomContractMappingExtensions
         submission.RequiredCount,
         submission.Words.Select(word => word.ToDto()).ToList());
 
+    public static GameplayViewDto ToDto(this PlayerGameplayState gameplayState) => new(
+        gameplayState.Room.ToDto(),
+        gameplayState.PlayerId,
+        gameplayState.CurrentRule,
+        gameplayState.ActiveWordText,
+        gameplayState.RemainingTurnSeconds,
+        gameplayState.IsCurrentPlayerExplainer,
+        gameplayState.IsCurrentPlayerGuesser);
+
     private static RoomSettingsDto ToDto(this RoomSettings settings) => new(
         settings.WordsPerPlayer,
         settings.TurnDurationSeconds,
@@ -81,7 +90,11 @@ internal static class RoomContractMappingExtensions
         turn.ExplainerPlayerId,
         turn.GuesserPlayerId,
         turn.ActiveWordId,
+        turn.DurationSeconds,
         turn.StartedAtUtc,
+        turn.EndsAtUtc,
+        turn.PausedAtUtc,
+        turn.RemainingSecondsWhenPaused,
         turn.ExpiredAtUtc,
         turn.CompletedAtUtc);
 }

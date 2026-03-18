@@ -41,9 +41,16 @@ Basic health check strategy:
 From the repository root:
 
 1. `dotnet restore src/backend/TheHat.slnx`
-2. `dotnet run --project src/backend/Api`
+2. `dotnet tool restore`
+3. `dotnet run --project src/backend/Api`
 
-The backend runs independently, persists room state in SQLite, and exposes a health endpoint at `/health`.
+The backend runs independently, applies EF Core migrations to SQLite on startup, and exposes a health endpoint at `/health`.
+
+Database workflow:
+
+- Startup applies pending migrations automatically.
+- If a local SQLite database predates the migration-based setup, delete it and let the app recreate it through migrations.
+- New migrations can be created from the repository root with `dotnet tool run dotnet-ef migrations add <Name> --project src/backend/Persistance/TheHat.Persistence.csproj`.
 
 Currently implemented API:
 

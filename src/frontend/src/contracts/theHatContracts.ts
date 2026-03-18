@@ -1,5 +1,5 @@
 export type PlayerOrderMode = 'random' | 'manual'
-export type RoomPhase = 'lobby' | 'inProgress' | 'paused' | 'completed'
+export type RoomPhase = 'lobby' | 'inProgress' | 'paused' | 'roundSummary' | 'completed'
 export type RoundRule = 'explainNoSynonyms' | 'gesturesOnly' | 'oneWordOnly'
 
 export interface RoomSettingsDto {
@@ -54,9 +54,23 @@ export interface TurnStateDto {
   explainerPlayerId: string
   guesserPlayerId: string
   activeWordId: string | null
+  durationSeconds: number
   startedAtUtc: string
+  endsAtUtc: string
+  pausedAtUtc: string | null
+  remainingSecondsWhenPaused: number | null
   expiredAtUtc: string | null
   completedAtUtc: string | null
+}
+
+export interface GameplayViewDto {
+  room: RoomSnapshotDto
+  playerId: string
+  currentRule: RoundRule | null
+  activeWord: string | null
+  remainingTurnSeconds: number | null
+  isCurrentPlayerExplainer: boolean
+  isCurrentPlayerGuesser: boolean
 }
 
 export interface RoomSnapshotDto {
@@ -105,6 +119,22 @@ export interface SubmitWordsRequestDto {
 }
 
 export interface StartGameRequestDto {
+  hostPlayerId: string
+}
+
+export interface ConfirmGuessRequestDto {
+  playerId: string
+}
+
+export interface PauseGameRequestDto {
+  hostPlayerId: string
+}
+
+export interface ResumeGameRequestDto {
+  hostPlayerId: string
+}
+
+export interface ContinueRoundRequestDto {
   hostPlayerId: string
 }
 
