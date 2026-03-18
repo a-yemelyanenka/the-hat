@@ -10,12 +10,14 @@ import type {
   JoinRoomRequestDto,
   RoomSnapshotDto,
 } from './contracts/theHatContracts'
+import { createRoomRealtimeConnection } from './services/roomRealtimeService'
 import { createRoom, getRoom, joinRoom, RoomServiceError, startGame, updateRoomSettings } from './services/roomsService'
 import type {
   CopyState,
   CreateRoomFormState,
   LobbySettingsFormState,
   FieldErrors,
+  RealtimeSyncState,
   Route,
   RoomSessionState,
   ValidationProblemDetails,
@@ -137,6 +139,7 @@ function App() {
   const [joinServerError, setJoinServerError] = useState('')
   const [isJoining, setIsJoining] = useState(false)
   const [isLobbyRefreshing, setIsLobbyRefreshing] = useState(false)
+  const [lobbyRealtimeSyncState, setLobbyRealtimeSyncState] = useState<RealtimeSyncState>('connecting')
   const [lobbySyncError, setLobbySyncError] = useState('')
   const [isSavingLobbySettings, setIsSavingLobbySettings] = useState(false)
   const [lobbySettingsError, setLobbySettingsError] = useState('')
@@ -175,11 +178,20 @@ function App() {
   useEffect(() => {
     if (!lobbyRoomId) {
       setIsLobbyRefreshing(false)
+      setLobbyRealtimeSyncState('connecting')
       setLobbySyncError('')
       return
     }
 
     let isDisposed = false
+    let pollingIntervalId: number | null = null
+
+    const stopPolling = () => {
+      if (pollingIntervalId !== null) {
+        window.clearInterval(pollingIntervalId)
+        pollingIntervalId = null
+      }
+    }
 
     const refreshLobby = async (backgroundRefresh: boolean) => {
       if (!backgroundRefresh) {
@@ -220,14 +232,79 @@ function App() {
       }
     }
 
-    void refreshLobby(false)
-    const intervalId = window.setInterval(() => {
-      void refreshLobby(true)
-    }, LOBBY_REFRESH_INTERVAL_MS)
+    const startPolling = () => {
+      if (pollingIntervalId !== null) {
+        return
+      }
+
+      void refreshLobby(false)
+      pollingIntervalId = window.setInterval(() => {
+        void refreshLobby(true)
+      }, LOBBY_REFRESH_INTERVAL_MS)
+    }
+
+    const handleFallback = (message?: string) => {
+      if (isDisposed) {
+        return
+      }
+
+      setLobbyRealtimeSyncState('fallback')
+      setLobbySyncError(message ?? 'Realtime updates are unavailable. Falling back to periodic refresh.')
+      startPolling()
+    }
+
+    setLobbyRealtimeSyncState('connecting')
+
+    const connectionPromise = createRoomRealtimeConnection({
+      roomId: lobbyRoomId,
+      onRoomUpdated: (refreshedRoom) => {
+        if (isDisposed) {
+          return
+        }
+
+        setRoomSession((current) => {
+          if (!current || current.room.roomId !== refreshedRoom.roomId) {
+            return current
+          }
+
+          return {
+            ...current,
+            room: refreshedRoom,
+          }
+        })
+        setLobbyRealtimeSyncState('connected')
+        setLobbySyncError('')
+      },
+      onReconnecting: () => {
+        if (!isDisposed) {
+          setLobbyRealtimeSyncState('reconnecting')
+        }
+      },
+      onReconnected: () => {
+        if (!isDisposed) {
+          setLobbyRealtimeSyncState('connected')
+          setLobbySyncError('')
+        }
+      },
+      onClosed: () => {
+        handleFallback()
+      },
+    }).catch((error) => {
+      if (error instanceof RoomServiceError) {
+        handleFallback(error.message)
+        return null
+      }
+
+      handleFallback()
+      return null
+    })
 
     return () => {
       isDisposed = true
-      window.clearInterval(intervalId)
+      stopPolling()
+      void connectionPromise.then(async (connection) => {
+        await connection?.stop()
+      })
     }
   }, [lobbyRoomId])
 
@@ -528,6 +605,7 @@ function App() {
         copyState={copyState}
         syncError={lobbySyncError}
         isRefreshing={isLobbyRefreshing}
+        realtimeSyncState={lobbyRealtimeSyncState}
         isSavingSettings={isSavingLobbySettings}
         settingsError={lobbySettingsError}
         settingsSuccess={lobbySettingsSuccess}

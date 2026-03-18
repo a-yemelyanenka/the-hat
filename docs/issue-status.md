@@ -37,7 +37,7 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 - [x] Issue 15 — Hide submitted words from gameplay views
 
 ## Epic 4: Real-time room and session management
-- [ ] Issue 16 — Implement real-time messaging for lobby and gameplay state
+- [x] Issue 16 — Implement real-time messaging for lobby and gameplay state
 - [ ] Issue 17 — Implement rejoin and session recovery by display name
 - [ ] Issue 18 — Handle player leave/disconnect state mid-game
 
@@ -86,7 +86,7 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 13 | Done | Added player word submission APIs plus persisted replace-on-save storage with duplicate-word support and lobby-only editing validation. |  |
 | 14 | Done | Added a responsive lobby word-entry panel with add/edit/remove controls, remaining-word feedback, and save/reset flows. |  |
 | 15 | Done | General room snapshots no longer expose submitted word content; only the player-specific entry flow can read words before the game starts. |  |
-| 16 | Not started |  |  |
+| 16 | Done | Added SignalR-based room snapshot updates, automatic reconnect/resubscribe, and frontend polling fallback when realtime is unavailable. |  |
 | 17 | Not started |  |  |
 | 18 | Not started |  |  |
 | 19 | Not started |  |  |

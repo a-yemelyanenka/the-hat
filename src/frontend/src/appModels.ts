@@ -22,6 +22,8 @@ export type ValidationProblemDetails = {
 
 export type CopyState = 'idle' | 'copied' | 'failed'
 
+export type RealtimeSyncState = 'connecting' | 'connected' | 'reconnecting' | 'fallback'
+
 export type RoomSessionState = {
   room: RoomSnapshotDto
   currentPlayerId: string

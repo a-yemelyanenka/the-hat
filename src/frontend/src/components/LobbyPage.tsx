@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { LobbySettingsFormState, RoomSessionState } from '../appModels'
+import type { LobbySettingsFormState, RealtimeSyncState, RoomSessionState } from '../appModels'
 import type { CopyState } from '../appModels'
 import type { PlayerDto, RoomSnapshotDto } from '../contracts/theHatContracts'
 import { WordSubmissionPanel } from './WordSubmissionPanel'
@@ -13,6 +13,7 @@ type LobbyPageProps = {
   copyState: CopyState
   syncError: string
   isRefreshing: boolean
+  realtimeSyncState: RealtimeSyncState
   isSavingSettings: boolean
   settingsError: string
   settingsSuccess: string
@@ -45,6 +46,7 @@ export function LobbyPage({
   copyState,
   syncError,
   isRefreshing,
+  realtimeSyncState,
   isSavingSettings,
   settingsError,
   settingsSuccess,
@@ -95,6 +97,16 @@ export function LobbyPage({
 
   const orderedPlayers = [...room.players].sort((left, right) => left.orderIndex - right.orderIndex)
   const canStartGame = room.phase === 'lobby' && room.lobbyReadiness.canStart
+  const realtimeStatusMessage =
+    realtimeSyncState === 'connected'
+      ? 'Live updates connected'
+      : realtimeSyncState === 'connecting'
+        ? 'Connecting live updates…'
+        : realtimeSyncState === 'reconnecting'
+          ? 'Reconnecting live updates…'
+          : isRefreshing
+            ? 'Refreshing lobby…'
+            : 'Realtime unavailable, refreshing every few seconds'
 
   const handleSettingsSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -157,7 +169,7 @@ export function LobbyPage({
         <span className={`status-pill ${room.lobbyReadiness.canStart ? 'success' : 'warning'}`}>
           {room.lobbyReadiness.canStart ? 'Ready to start' : 'Waiting for submissions'}
         </span>
-        <span className="status-note">{isRefreshing ? 'Refreshing lobby…' : 'Updates every few seconds'}</span>
+        <span className="status-note">{realtimeStatusMessage}</span>
         {currentPlayer ? <span className="status-note">You are {currentPlayer.displayName}</span> : null}
       </section>
 

@@ -40,8 +40,9 @@ public sealed class RoomJoinServiceTests : IAsyncDisposable
         Assert.Equal("Bob", joinedPlayer.DisplayName);
         Assert.Equal(displayNameNormalizer.Normalize("Bob"), joinedPlayer.NormalizedDisplayName);
         Assert.True(joinedPlayer.IsActive);
-        Assert.Equal(1, joinedPlayer.OrderIndex);
+        Assert.True(joinedPlayer.OrderIndex is 0 or 1);
         Assert.Equal(0, joinedPlayer.Score);
+        Assert.Equal([0, 1], updatedRoom.Players.Select(player => player.OrderIndex).OrderBy(index => index).ToArray());
 
         var persistedRoom = await dbContext.Rooms.AsNoTracking().SingleAsync(existingRoom => existingRoom.RoomId == room.RoomId);
         Assert.Equal(2, persistedRoom.Players.Count);

@@ -105,4 +105,4 @@ Backend contract records live in [src/backend/Contracts/RoomContracts.cs](../src
 
 The initial TypeScript mirror for these contracts lives in [src/frontend/src/contracts/theHatContracts.ts](../src/frontend/src/contracts/theHatContracts.ts).
 
-This keeps room, lobby, and gameplay flows explicit on the frontend while the API and realtime layers are implemented in later issues.
+This keeps room, lobby, and gameplay flows explicit on the frontend, with the current room and lobby realtime transport now delivered through the SignalR room hub.

@@ -30,6 +30,14 @@ export class RoomServiceError extends Error {
   }
 }
 
+export function getApiBaseUrl(): string {
+  if (!API_BASE_URL) {
+    throw new RoomServiceError('VITE_API_BASE_URL is not configured.')
+  }
+
+  return API_BASE_URL
+}
+
 export async function createRoom(request: CreateRoomRequestDto): Promise<CreateRoomResponseDto> {
   return sendJsonRequest<CreateRoomResponseDto>(getApiBaseUrl(), '/api/rooms', {
     method: 'POST',
@@ -102,14 +110,6 @@ type JsonRequestOptions = {
   body?: unknown
   defaultErrorMessage: string
   notFoundMessage?: string
-}
-
-function getApiBaseUrl(): string {
-  if (!API_BASE_URL) {
-    throw new RoomServiceError('VITE_API_BASE_URL is not configured.')
-  }
-
-  return API_BASE_URL
 }
 
 async function sendJsonRequest<T>(apiBaseUrl: string, path: string, options: JsonRequestOptions): Promise<T> {

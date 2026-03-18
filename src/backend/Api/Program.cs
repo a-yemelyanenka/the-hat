@@ -2,6 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using TheHat.Backend.Api;
 using TheHat.Backend.Domain;
 using TheHat.Backend.Persistence;
 
@@ -16,11 +17,18 @@ builder.Services
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     });
+builder.Services
+    .AddSignalR()
+    .AddJsonProtocol(options =>
+    {
+        options.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
+    });
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
         policy.WithOrigins(corsOrigins)
+            .AllowCredentials()
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
@@ -29,6 +37,7 @@ builder.Services.AddOpenApi();
 builder.Services.AddDomainServices();
 builder.Services.AddDbContext<TheHatDbContext>(options => options.UseSqlite(sqliteConnectionString));
 builder.Services.AddScoped<IApplicationDbContext>(serviceProvider => serviceProvider.GetRequiredService<TheHatDbContext>());
+builder.Services.AddScoped<IRoomRealtimeNotifier, RoomRealtimeNotifier>();
 builder.Services.AddHealthChecks().AddDbContextCheck<TheHatDbContext>(name: "sqlite");
 
 var app = builder.Build();
@@ -45,6 +54,7 @@ app.UseAuthorization();
 
 app.MapHealthChecks("/health");
 app.MapControllers();
+app.MapHub<RoomHub>("/hubs/rooms");
 
 app.Run();
 

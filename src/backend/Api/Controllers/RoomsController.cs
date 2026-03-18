@@ -11,7 +11,8 @@ public sealed class RoomsController(
     IRoomCreationService roomCreationService,
     IRoomJoinService roomJoinService,
     IRoomLobbyService roomLobbyService,
-    IRoomWordSubmissionService roomWordSubmissionService) : ControllerBase
+    IRoomWordSubmissionService roomWordSubmissionService,
+    IRoomRealtimeNotifier roomRealtimeNotifier) : ControllerBase
 {
     [HttpGet("{roomId}")]
     [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
@@ -53,6 +54,7 @@ public sealed class RoomsController(
         }
 
         var response = new CreateRoomResponseDto(room.ToDto());
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
         return Created($"/api/rooms/{room.RoomId}", response);
     }
 
@@ -85,6 +87,7 @@ public sealed class RoomsController(
             return ValidationProblem(CreateModelState(exception));
         }
 
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
         return Ok(room.ToDto());
     }
 
@@ -143,6 +146,7 @@ public sealed class RoomsController(
             return ValidationProblem(CreateModelState(exception));
         }
 
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
         return Ok(room.ToDto());
     }
 
@@ -170,6 +174,7 @@ public sealed class RoomsController(
             return ValidationProblem(CreateModelState(exception));
         }
 
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
         return Ok(room.ToDto());
     }
 
@@ -197,6 +202,7 @@ public sealed class RoomsController(
             return ValidationProblem(CreateModelState(exception));
         }
 
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
         return Ok(room.ToDto());
     }
 

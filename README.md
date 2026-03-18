@@ -48,6 +48,9 @@ The backend runs independently, persists room state in SQLite, and exposes a hea
 Currently implemented API:
 
 - `POST /api/rooms` creates a lobby room for the host and returns the room snapshot plus a shareable invite link.
+- `GET /api/rooms/{roomId}` returns the latest room snapshot.
+- `PUT /api/rooms/{roomId}/settings`, `PUT /api/rooms/{roomId}/words`, `POST /api/rooms/{roomId}/start`, and `POST /api/rooms/invite/{inviteCode}/join` update room state.
+- `GET /hubs/rooms` exposes the SignalR hub used for live room snapshots.
 
 ### Frontend
 
@@ -64,6 +67,14 @@ Currently implemented frontend flow:
 - `/` shows the entry page for room creation.
 - `/create-room` lets the host configure initial settings and create a room.
 - A successful create request routes the host to a simple lobby view at `/rooms/{roomId}/lobby`.
+- The lobby prefers SignalR for live room updates and automatically falls back to periodic `GET /api/rooms/{roomId}` refreshes if realtime transport is unavailable.
+
+## Realtime room updates
+
+- The backend publishes full room snapshots over SignalR at `/hubs/rooms`.
+- Clients subscribe to their room after entering the lobby and receive an immediate snapshot plus later membership, settings, submission, and phase changes.
+- The frontend uses automatic SignalR reconnect. After reconnecting, it resubscribes and receives the current room snapshot again.
+- If the realtime connection cannot be established or is closed after reconnect attempts, the frontend falls back to periodic room polling so the lobby still updates without manual refresh.
 
 ## Environment variable strategy
 
