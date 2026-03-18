@@ -167,6 +167,44 @@ public sealed class RoomEngineTests
     }
 
     [Fact]
+    public void DeactivatePlayer_RotatesAffectedTurnAndKeepsScores()
+    {
+        var room = CreateRoom();
+        _roomEngine.StartGame(room, seed: 5, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        room.Players.Single(player => player.Id == "player-1").Score = 3;
+
+        var changed = _roomEngine.DeactivatePlayer(room, "player-2", new DateTime(2026, 3, 17, 12, 0, 15, DateTimeKind.Utc));
+
+        Assert.True(changed);
+        Assert.False(room.Players.Single(player => player.Id == "player-2").IsActive);
+        Assert.Equal(3, room.Players.Single(player => player.Id == "player-1").Score);
+        Assert.Equal(RoomPhase.InProgress, room.Phase);
+        Assert.Equal("player-3", room.CurrentTurn!.ExplainerPlayerId);
+        Assert.Equal("player-1", room.CurrentTurn.GuesserPlayerId);
+    }
+
+    [Fact]
+    public void DeactivatePlayer_WithTooFewActivePlayers_PausesGameUntilSomeoneReturns()
+    {
+        var room = CreateTwoPlayerRoomWithSingleWord();
+        _roomEngine.StartGame(room, seed: 1, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+
+        var changed = _roomEngine.DeactivatePlayer(room, "player-2", new DateTime(2026, 3, 17, 12, 0, 10, DateTimeKind.Utc));
+
+        Assert.True(changed);
+        Assert.Equal(RoomPhase.Paused, room.Phase);
+        Assert.Null(room.CurrentTurn);
+
+        var reactivated = _roomEngine.ReactivatePlayer(room, "player-2", new DateTime(2026, 3, 17, 12, 0, 20, DateTimeKind.Utc));
+
+        Assert.True(reactivated);
+        Assert.Equal(RoomPhase.Paused, room.Phase);
+        Assert.NotNull(room.CurrentTurn);
+        Assert.Equal("player-2", room.CurrentTurn!.ExplainerPlayerId);
+        Assert.Equal("player-1", room.CurrentTurn.GuesserPlayerId);
+    }
+
+    [Fact]
     public void AdvanceState_ExpiresElapsedTurns()
     {
         var room = CreateRoom();

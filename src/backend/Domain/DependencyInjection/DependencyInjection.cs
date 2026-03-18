@@ -11,6 +11,7 @@ public static class DependencyInjection
         services.AddSingleton<IRoomFactory, RoomFactory>();
         services.AddScoped<IRoomLobbyService, RoomLobbyService>();
         services.AddScoped<IRoomGameplayService, RoomGameplayService>();
+        services.AddScoped<IRoomPresenceService, RoomPresenceService>();
         services.AddScoped<IRoomWordSubmissionService, RoomWordSubmissionService>();
         services.AddScoped<IRoomCreationService, RoomCreationService>();
         services.AddScoped<IRoomJoinService, RoomJoinService>();

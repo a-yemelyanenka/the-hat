@@ -320,6 +320,7 @@ function App() {
 
     const connectionPromise = createRoomRealtimeConnection({
       roomId: lobbyRoomId,
+      playerId: lobbyPlayerId ?? undefined,
       onRoomUpdated: (refreshedRoom) => {
         if (isDisposed) {
           return
@@ -360,7 +361,7 @@ function App() {
         await connection?.stop()
       })
     }
-  }, [lobbyRoomId, updateRoomSessionSnapshot])
+  }, [lobbyPlayerId, lobbyRoomId, updateRoomSessionSnapshot])
 
   useEffect(() => {
     if (!lobbyRoomId || !lobbyPlayerId || !isGameplayActive) {

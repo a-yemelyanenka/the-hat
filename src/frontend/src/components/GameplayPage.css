@@ -4,6 +4,13 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.gameplay-hero-panel,
+.gameplay-word-panel,
+.gameplay-scoreboard-panel,
+.gameplay-summary-panel {
+  grid-column: span 2;
+}
+
 .gameplay-status-row {
   grid-template-columns: repeat(3, max-content);
 }
@@ -12,10 +19,74 @@
   align-content: start;
 }
 
-.gameplay-word-panel,
-.gameplay-scoreboard-panel,
-.gameplay-summary-panel {
-  grid-column: span 2;
+.gameplay-hero-panel {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+  align-items: end;
+}
+
+.gameplay-hero-copy {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.gameplay-hero-lead {
+  margin: 0;
+}
+
+.gameplay-hero-meta,
+.turn-role-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.gameplay-hero-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.hero-stat,
+.turn-role-card,
+.transition-rule-card {
+  padding: 1rem;
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  background: var(--panel-muted);
+}
+
+.hero-stat {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.hero-stat span,
+.turn-role-card p,
+.transition-rule-card p {
+  color: var(--text-m);
+}
+
+.hero-stat strong {
+  font-size: 1.35rem;
+}
+
+.turn-role-grid {
+  margin-top: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.turn-role-card {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.turn-role-card-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.round-transition-copy {
+  display: grid;
+  gap: 1rem;
 }
 
 .gameplay-rule-title,
@@ -66,10 +137,17 @@
     grid-template-columns: 1fr;
   }
 
+  .gameplay-hero-panel,
   .gameplay-word-panel,
   .gameplay-scoreboard-panel,
   .gameplay-summary-panel {
     grid-column: span 1;
+  }
+
+  .gameplay-hero-panel,
+  .gameplay-hero-meta,
+  .turn-role-grid {
+    grid-template-columns: 1fr;
   }
 
   .gameplay-status-row {

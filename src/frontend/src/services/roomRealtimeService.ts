@@ -15,6 +15,7 @@ export type RoomRealtimeConnection = {
 
 type CreateRoomRealtimeConnectionOptions = {
   roomId: string
+  playerId?: string
   onRoomUpdated: (room: RoomSnapshotDto) => void
   onReconnecting: () => void
   onReconnected: () => void
@@ -42,7 +43,7 @@ export async function createRoomRealtimeConnection(
 
   connection.onreconnected(async () => {
     try {
-      await subscribeToRoom(connection, options.roomId)
+      await subscribeToRoom(connection, options.roomId, options.playerId)
       options.onReconnected()
     } catch {
       options.onClosed()
@@ -55,7 +56,7 @@ export async function createRoomRealtimeConnection(
 
   try {
     await connection.start()
-    await subscribeToRoom(connection, options.roomId)
+    await subscribeToRoom(connection, options.roomId, options.playerId)
   } catch {
     await safeStop(connection)
     throw new RoomServiceError('Realtime updates are unavailable right now.')
@@ -80,8 +81,8 @@ function getApiBaseUrl(): string {
   return API_BASE_URL
 }
 
-async function subscribeToRoom(connection: HubConnection, roomId: string): Promise<void> {
-  await connection.invoke(SUBSCRIBE_METHOD, roomId)
+async function subscribeToRoom(connection: HubConnection, roomId: string, playerId?: string): Promise<void> {
+  await connection.invoke(SUBSCRIBE_METHOD, roomId, playerId ?? null)
 }
 
 async function unsubscribeFromRoom(connection: HubConnection, roomId: string): Promise<void> {

@@ -4,6 +4,10 @@ public interface IRoomEngine
 {
     PlayerState? FindRejoinCandidate(RoomState room, string displayName);
 
+    bool ReactivatePlayer(RoomState room, string playerId, DateTime? nowUtc = null);
+
+    bool DeactivatePlayer(RoomState room, string playerId, DateTime? nowUtc = null);
+
     void StartGame(RoomState room, int? seed = null, DateTime? nowUtc = null);
 
     bool AdvanceState(RoomState room, DateTime? nowUtc = null);

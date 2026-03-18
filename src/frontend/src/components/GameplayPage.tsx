@@ -71,6 +71,15 @@ function getRoundCopy(rule: RoundRule | null | undefined): { title: string; desc
   return roundRuleCopy[rule]
 }
 
+function getUpcomingRuleCopy(roundNumber: number | null | undefined): { title: string; description: string } | null {
+  if (!roundNumber || roundNumber >= 3) {
+    return null
+  }
+
+  const nextRule = roundNumber === 1 ? 'gesturesOnly' : 'oneWordOnly'
+  return roundRuleCopy[nextRule]
+}
+
 function getPlayerName(players: PlayerDto[], playerId: string | null | undefined): string {
   if (!playerId) {
     return '—'
@@ -150,6 +159,11 @@ export function GameplayPage({
   const isHost = currentPlayerId === room.hostPlayerId
   const rankedPlayers = rankPlayers(room.players)
   const summaryRoundNumber = room.phase === 'roundSummary' || room.phase === 'completed' ? room.currentRoundNumber : null
+  const upcomingRuleCopy = getUpcomingRuleCopy(summaryRoundNumber)
+  const activePlayers = room.players.filter((player) => player.isActive)
+  const waitingForReconnect = room.phase === 'paused' && !currentTurn && activePlayers.length < 2
+  const explainerName = getPlayerName(room.players, currentTurn?.explainerPlayerId)
+  const guesserName = getPlayerName(room.players, currentTurn?.guesserPlayerId)
   const phaseLabel =
     room.phase === 'inProgress'
       ? 'Turn in progress'
@@ -184,6 +198,49 @@ export function GameplayPage({
       {actionError ? <p className="banner banner-error">{actionError}</p> : null}
 
       <section className="gameplay-grid">
+        <article className="panel gameplay-panel gameplay-hero-panel">
+          <div className="gameplay-hero-copy">
+            <p className="eyebrow">{roundCopy?.title ?? 'Gameplay status'}</p>
+            <h2>
+              {room.phase === 'completed'
+                ? 'Final results are ready'
+                : room.phase === 'roundSummary'
+                  ? `Round ${summaryRoundNumber ?? '—'} complete`
+                  : waitingForReconnect
+                    ? 'Waiting for another player to reconnect'
+                    : gameplayView?.isCurrentPlayerExplainer
+                      ? 'Your turn to explain'
+                      : gameplayView?.isCurrentPlayerGuesser
+                        ? 'Your turn to guess'
+                        : 'Watch the current turn'}
+            </h2>
+            <p className="lead gameplay-hero-lead">
+              {room.phase === 'completed'
+                ? 'Review the final ranking and start a fresh room when everyone is ready.'
+                : room.phase === 'roundSummary'
+                  ? 'Scores are cumulative. The host can move everyone into the next round when ready.'
+                  : waitingForReconnect
+                    ? 'Gameplay is paused because fewer than two active players remain in the room.'
+                    : roundCopy?.description ?? 'Live turn details stay in sync for every player.'}
+            </p>
+          </div>
+
+          <div className="gameplay-hero-meta">
+            <div className="hero-stat">
+              <span>Round</span>
+              <strong>{room.currentRoundNumber ?? '—'}</strong>
+            </div>
+            <div className="hero-stat">
+              <span>Timer</span>
+              <strong>{gameplayView?.remainingTurnSeconds ?? '—'}s</strong>
+            </div>
+            <div className="hero-stat">
+              <span>Active players</span>
+              <strong>{activePlayers.length}</strong>
+            </div>
+          </div>
+        </article>
+
         <article className="panel gameplay-panel invite-panel">
           <h2>Invite</h2>
           <p className="invite-code">{room.inviteCode}</p>
@@ -214,26 +271,44 @@ export function GameplayPage({
         <article className="panel gameplay-panel">
           <h2>Turn status</h2>
           {currentTurn ? (
-            <dl className="summary-list">
-              <div>
-                <dt>Turn</dt>
-                <dd>{currentTurn.turnNumber}</dd>
+            <>
+              <dl className="summary-list">
+                <div>
+                  <dt>Turn</dt>
+                  <dd>{currentTurn.turnNumber}</dd>
+                </div>
+                <div>
+                  <dt>Explainer</dt>
+                  <dd>{explainerName}</dd>
+                </div>
+                <div>
+                  <dt>Guesser</dt>
+                  <dd>{guesserName}</dd>
+                </div>
+                <div>
+                  <dt>Timer</dt>
+                  <dd>{gameplayView?.remainingTurnSeconds ?? '—'} seconds left</dd>
+                </div>
+              </dl>
+
+              <div className="turn-role-grid">
+                <article className={`turn-role-card ${gameplayView?.isCurrentPlayerExplainer ? 'turn-role-card-active' : ''}`}>
+                  <span className="eyebrow">Explainer</span>
+                  <strong>{explainerName}</strong>
+                  <p>{gameplayView?.isCurrentPlayerExplainer ? 'You can see the word and confirm each correct guess.' : 'This player sees the active word.'}</p>
+                </article>
+
+                <article className={`turn-role-card ${gameplayView?.isCurrentPlayerGuesser ? 'turn-role-card-active' : ''}`}>
+                  <span className="eyebrow">Guesser</span>
+                  <strong>{guesserName}</strong>
+                  <p>{gameplayView?.isCurrentPlayerGuesser ? 'You are the guesser for this turn.' : 'This player is answering clues right now.'}</p>
+                </article>
               </div>
-              <div>
-                <dt>Explainer</dt>
-                <dd>{getPlayerName(room.players, currentTurn.explainerPlayerId)}</dd>
-              </div>
-              <div>
-                <dt>Guesser</dt>
-                <dd>{getPlayerName(room.players, currentTurn.guesserPlayerId)}</dd>
-              </div>
-              <div>
-                <dt>Timer</dt>
-                <dd>{gameplayView?.remainingTurnSeconds ?? '—'} seconds left</dd>
-              </div>
-            </dl>
+            </>
           ) : room.phase === 'roundSummary' ? (
             <p>Waiting for the host to start the next round.</p>
+          ) : waitingForReconnect ? (
+            <p>The active turn was cleared because too few active players remain. Reconnect another player to continue.</p>
           ) : (
             <p>No active turn is running.</p>
           )}
@@ -259,10 +334,20 @@ export function GameplayPage({
               <>
                 <p className="observer-copy">The current word stays hidden from observers and the guesser.</p>
                 {gameplayView?.isCurrentPlayerGuesser ? <span className="status-pill">You are guessing this turn</span> : null}
+                {!gameplayView?.isCurrentPlayerGuesser ? <span className="status-pill">Observer view</span> : null}
               </>
             )
           ) : room.phase === 'roundSummary' ? (
-            <p>Round {summaryRoundNumber ?? '—'} is complete. Review scores and continue when ready.</p>
+            <div className="round-transition-copy">
+              <p>Round {summaryRoundNumber ?? '—'} is complete. Review scores and continue when ready.</p>
+              {upcomingRuleCopy ? (
+                <div className="transition-rule-card">
+                  <span className="eyebrow">Next round</span>
+                  <strong>{upcomingRuleCopy.title}</strong>
+                  <p>{upcomingRuleCopy.description}</p>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <p>The game is complete. Final results are shown below.</p>
           )}
@@ -327,6 +412,16 @@ export function GameplayPage({
                 ? 'All rounds are finished. Rankings stay cumulative across the full game.'
                 : `Scores above are cumulative after round ${summaryRoundNumber}. The next round reuses the same word pool with a fresh shuffle.`}
             </p>
+            {room.phase === 'roundSummary' && upcomingRuleCopy ? (
+              <div className="transition-rule-card">
+                <span className="eyebrow">Prepare for the next rule</span>
+                <strong>{upcomingRuleCopy.title}</strong>
+                <p>{upcomingRuleCopy.description}</p>
+              </div>
+            ) : null}
+            {room.phase === 'completed' ? (
+              <p className="status-note">Ties stay grouped on the final ranking so the winner view is clear for everyone.</p>
+            ) : null}
           </article>
         ) : null}
       </section>

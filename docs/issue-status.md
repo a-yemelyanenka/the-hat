@@ -39,7 +39,7 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 ## Epic 4: Real-time room and session management
 - [x] Issue 16 — Implement real-time messaging for lobby and gameplay state
 - [x] Issue 17 — Implement rejoin and session recovery by display name
-- [ ] Issue 18 — Handle player leave/disconnect state mid-game
+- [x] Issue 18 — Handle player leave/disconnect state mid-game
 
 ## Epic 5: Game engine and rules
 - [x] Issue 19 — Implement game state machine for rounds, turns, and room phases
@@ -52,9 +52,9 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 - [x] Issue 26 — Implement host pause/resume controls
 
 ## Epic 6: Gameplay UI
-- [ ] Issue 27 — Build active turn screen for explainer and observers
-- [ ] Issue 28 — Build score and turn-status panels for all players
-- [ ] Issue 29 — Build round transition and summary screens
+- [x] Issue 27 — Build active turn screen for explainer and observers
+- [x] Issue 28 — Build score and turn-status panels for all players
+- [x] Issue 29 — Build round transition and summary screens
 
 ## Epic 7: Internationalization and usability
 - [ ] Issue 30 — Add internationalization framework to frontend
@@ -88,7 +88,7 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 15 | Done | General room snapshots no longer expose submitted word content; only the player-specific entry flow can read words before the game starts. |  |
 | 16 | Done | Added SignalR-based room snapshot updates, automatic reconnect/resubscribe, and frontend polling fallback when realtime is unavailable. |  |
 | 17 | Done | Added invite-based rejoin API plus join-flow recovery so the same trimmed display name restores the existing player entry without creating duplicates. |  |
-| 18 | Not started |  |  |
+| 18 | Done | SignalR subscriptions now track player presence, disconnects mark players inactive, and affected turns rotate or pause predictably until another player reconnects. |  |
 | 19 | Done | Added an explicit gameplay state machine with `InProgress`, `Paused`, `RoundSummary`, and `Completed` room phases. |  |
 | 20 | Done | Turn rotation now follows the ordered active player ring and carries rotation forward across rounds. |  |
 | 21 | Done | Each round now stores and exposes its specific rule so the frontend can show the active instructions. |  |
@@ -97,9 +97,9 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 24 | Done | Round 2 and 3 rebuild from the original submitted word multiset and reshuffle duplicates correctly. |  |
 | 25 | Done | Added round-summary and final-results states plus a gameplay UI with cumulative ranking and tie visibility. |  |
 | 26 | Done | Added host pause/resume backend actions and frontend controls that freeze and restore the active turn timer. |  |
-| 27 | Not started |  |  |
-| 28 | Not started |  |  |
-| 29 | Not started |  |  |
+| 27 | Done | Gameplay screen now leads with a phone-friendly active-turn hero, role cards, and explainer-only word controls. |  |
+| 28 | Done | Turn-status and scoreboard panels stay live for every player and visibly distinguish inactive participants. |  |
+| 29 | Done | Round summaries now include next-round rule callouts and the final results view is clearer at game completion. |  |
 | 30 | Not started |  |  |
 | 31 | Not started |  |  |
 | 32 | Not started |  |  |

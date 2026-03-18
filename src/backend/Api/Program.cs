@@ -38,6 +38,7 @@ builder.Services.AddDomainServices();
 builder.Services.AddDbContext<TheHatDbContext>(options => options.UseSqlite(sqliteConnectionString));
 builder.Services.AddScoped<IApplicationDbContext>(serviceProvider => serviceProvider.GetRequiredService<TheHatDbContext>());
 builder.Services.AddScoped<IRoomRealtimeNotifier, RoomRealtimeNotifier>();
+builder.Services.AddSingleton<IRoomConnectionTracker, RoomConnectionTracker>();
 builder.Services.AddHealthChecks().AddDbContextCheck<TheHatDbContext>(name: "sqlite");
 
 var app = builder.Build();
