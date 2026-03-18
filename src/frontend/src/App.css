@@ -1,11 +1,18 @@
 .app-shell {
   display: grid;
   gap: 2rem;
-  padding: 4rem 1.5rem;
+  padding: 3rem 1.5rem;
   text-align: left;
 }
 
-.hero {
+.app-shell-narrow {
+  max-width: 72rem;
+  margin: 0 auto;
+}
+
+.page-header,
+.panel,
+.summary-list {
   display: grid;
   gap: 1rem;
 }
@@ -20,45 +27,100 @@
 }
 
 .lead {
-  max-width: 48rem;
-  font-size: 1.125rem;
+  max-width: 42rem;
+  font-size: 1.05rem;
 }
 
-.card-grid {
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.card,
-.next-steps {
+.panel {
   border: 1px solid var(--border);
-  border-radius: 1rem;
-  padding: 1.25rem;
-  background: var(--social-bg);
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  background:
+    linear-gradient(180deg, var(--panel-highlight) 0%, rgba(255, 255, 255, 0) 100%),
+    var(--social-bg);
   box-shadow: var(--shadow);
 }
 
-.card h2,
-.next-steps h2 {
-  margin-bottom: 0.75rem;
+.page-header {
+  grid-template-columns: auto 1fr;
+  align-items: start;
 }
 
-.next-steps ol {
+.page-header > div {
+  display: grid;
+  gap: 0.75rem;
+}
+.summary-list dt {
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.button {
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.9rem 1.25rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    opacity 120ms ease,
+    background-color 120ms ease;
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.button-primary {
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-strong), var(--accent));
+}
+
+.button-secondary {
+  color: var(--text-h);
+  background: var(--panel-muted);
+  border: 1px solid var(--border);
+}
+
+.summary-list {
   margin: 0;
-  padding-left: 1.25rem;
 }
 
-.next-steps li + li {
-  margin-top: 0.5rem;
+.summary-list div {
+  display: grid;
+  gap: 0.25rem;
+  padding-block: 0.4rem;
+}
+
+.summary-list dd {
+  margin: 0;
+  color: var(--text-h);
+}
+
+@media (max-width: 900px) {
+  .page-header {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 768px) {
   .app-shell {
-    padding: 2rem 1rem;
+    padding: 1.5rem 1rem;
   }
 
   .lead {
     font-size: 1rem;
+  }
+
+  .button {
+    width: 100%;
+    justify-content: center;
   }
 }

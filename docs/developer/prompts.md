@@ -248,6 +248,11 @@ Model used for this conversation: GPT-5.4
 > 5. Update [docs/issue-status.md](../../docs/issue-status.md).
 > 6. Summarize completed work and any follow-up items.
 >
+
+## Prompt 22
+**Model:** GPT-5.4
+
+> start my backend
 > </attachment>
 > Follow instructions in [implement-issues.prompt.md](file:///d%3A/Repos/the-hat/.github/prompts/implement-issues.prompt.md).
 >
@@ -277,3 +282,98 @@ Model used for this conversation: GPT-5.4
 **Model:** GPT-5.4
 
 > combine all my review comments and adjust copilot instructions to reflect them
+
+## Prompt 26
+**Model:** GPT-5.4
+
+> <attachment id="prompt:implement-issues.prompt.md" filePath="d:\Repos\the-hat\.github\prompts\implement-issues.prompt.md">
+> Prompt instructions file:
+> # Implement backlog issues
+>
+> Take a look at [docs/features.md](../../docs/features.md) and implement the issue or issues provided after `/`.
+>
+> ## Instructions
+> - Read the requested issue definitions in [docs/features.md](../../docs/features.md).
+> - Implement only the requested issue scope.
+> - Keep changes minimal and focused.
+> - Follow the project guidance in [copilot-instructions.md](../copilot-instructions.md).
+> - Add or update tests when the issue changes core logic or state transitions.
+> - Keep documentation aligned with the implementation.
+> - When the issue is implemented, update [docs/issue-status.md](../../docs/issue-status.md).
+> - Also update [docs/developer/prompts.md](../../docs/developer/prompts.md) with the latest user prompt and model.
+>
+> ## Usage examples
+> - `/1`
+> - `/6,8,9`
+> - `/19-24`
+>
+> ## Expected workflow
+> 1. Read the matching issues in [docs/features.md](../../docs/features.md).
+> 2. Identify the affected files.
+> 3. Implement the requested issues.
+> 4. Validate the changes.
+> 5. Update [docs/issue-status.md](../../docs/issue-status.md).
+> 6. Summarize completed work and any follow-up items.
+>
+> </attachment>
+> Follow instructions in [implement-issues.prompt.md](file:///d%3A/Repos/the-hat/.github/prompts/implement-issues.prompt.md).
+> 7
+
+## Prompt 27
+**Model:** GPT-5.4
+
+> Code review:
+>
+> Let's follow best practices and split the frontend code into components
+
+## Prompt 28
+**Model:** GPT-5.4
+
+> move component level css style to component level css files, each component should have it's own css file when needed
+
+## Prompt 29
+**Model:** GPT-5.4
+
+> move all fetching logic into it's own service. use custom hooks if needed
+> API_BASE_URL take only from env, no need fallback
+
+## Prompt 30
+**Model:** GPT-5.4
+
+> There is a bug in layout
+> The lobby overlaps Create room and start
+
+## Prompt 31
+**Model:** GPT-5.4
+
+> Do you see any issues in the screenshot?
+
+## Prompt 32
+**Model:** GPT-5.4
+
+> please fix it
+
+## Prompt 33
+**Model:** GPT-5.4
+
+> Add .env local file, put api base url for my local API
+
+## Prompt 34
+**Model:** GPT-5.4
+
+> use the port on which my backed is hosted
+
+## Prompt 35
+**Model:** GPT-5.4
+
+> find my prompts that will be good to put into copilot instructions and adjust copilot instructions
+
+## Prompt 36
+**Model:** GPT-5.4
+
+> I cannot make a request from frontend because of the cors issue
+
+## Prompt 37
+**Model:** GPT-5.4
+
+> add to gitignore sqllite files

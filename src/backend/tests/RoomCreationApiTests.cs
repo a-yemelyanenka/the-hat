@@ -114,6 +114,28 @@ public sealed class RoomCreationApiTests : IAsyncDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task PreflightRequest_ReturnsCorsHeadersForFrontendOrigin()
+    {
+        using var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("http://localhost"),
+        });
+
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/rooms");
+        request.Headers.Add("Origin", "http://localhost:5173");
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+        request.Headers.Add("Access-Control-Request-Headers", "content-type");
+
+        var response = await client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Origin", out var allowedOrigins));
+        Assert.Contains("http://localhost:5173", allowedOrigins);
+        Assert.True(response.Headers.TryGetValues("Access-Control-Allow-Methods", out var allowedMethods));
+        Assert.Contains("POST", string.Join(',', allowedMethods), StringComparison.OrdinalIgnoreCase);
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _factory.DisposeAsync();

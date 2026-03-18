@@ -8,6 +8,7 @@ using TheHat.Backend.Persistence;
 var builder = WebApplication.CreateBuilder(args);
 
 var sqliteConnectionString = ResolveSqliteConnectionString(builder.Configuration, builder.Environment);
+var corsOrigins = ResolveCorsOrigins(builder.Configuration, builder.Environment);
 
 builder.Services
     .AddControllers()
@@ -15,6 +16,15 @@ builder.Services
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
     });
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.WithOrigins(corsOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 builder.Services.AddOpenApi();
 builder.Services.AddDomainServices();
 builder.Services.AddDbContext<TheHatDbContext>(options => options.UseSqlite(sqliteConnectionString));
@@ -30,6 +40,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseCors();
 app.UseAuthorization();
 
 app.MapHealthChecks("/health");
@@ -60,6 +71,18 @@ static string ResolveSqliteConnectionString(IConfiguration configuration, IWebHo
     }
 
     return connectionStringBuilder.ToString();
+}
+
+static string[] ResolveCorsOrigins(IConfiguration configuration, IWebHostEnvironment environment)
+{
+    var configuredOrigins = configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+        ?.Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .Select(origin => origin.Trim().TrimEnd('/'))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+
+
+    return configuredOrigins ?? [];
 }
 
 static async Task EnsureDatabaseCreatedAsync(IServiceProvider services)

@@ -59,6 +59,12 @@ From the repository root:
 
 The frontend runs independently with Vite.
 
+Currently implemented frontend flow:
+
+- `/` shows the entry page for room creation.
+- `/create-room` lets the host configure initial settings and create a room.
+- A successful create request routes the host to a simple lobby view at `/rooms/{roomId}/lobby`.
+
 ## Environment variable strategy
 
 Local configuration follows framework conventions:
@@ -71,6 +77,7 @@ Example local variables:
 - Backend: `ASPNETCORE_ENVIRONMENT=Development`
 - Backend: `ASPNETCORE_URLS=http://localhost:5000`
 - Backend: `ConnectionStrings__TheHat=Data Source=App_Data/thehat.development.db`
+- Backend: `Cors__AllowedOrigins__0=http://localhost:5173`
 - Frontend: `VITE_API_BASE_URL=http://localhost:5000`
 
 Use [src/frontend/.env.example](src/frontend/.env.example) as the frontend starting point.

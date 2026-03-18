@@ -45,6 +45,15 @@
 - Design with real-time synchronization in mind.
 - Make UI responsive and mobile-first.
 - Keep i18n in mind when adding user-facing strings.
+- Keep the backend solution file under `src/backend` and prefer the `.slnx` format.
+
+## Frontend guidance
+- Keep top-level React entry components thin. Prefer moving page markup into dedicated components and keeping orchestration/state wiring in a small coordinator component.
+- When frontend code grows, split it into focused components instead of keeping large page implementations in a single file.
+- Put component-specific styles in per-component CSS files. Keep only shared layout primitives and reusable global styles in shared stylesheets.
+- Move HTTP/fetching logic into dedicated frontend services. Use custom hooks when they help encapsulate stateful client-side behavior.
+- Do not hardcode or infer frontend API base URLs in code. Read them from Vite environment variables.
+- Prefer strongly typed service APIs and explicit error handling between services and UI components.
 
 ## File and documentation guidance
 - Before implementing significant features, consult [docs/features.md](../docs/features.md).
@@ -66,5 +75,6 @@
 - When adding backend features, start by deciding what belongs in `Domain`, then keep transport code as a thin wrapper around it.
 - Prefer constructor-injected collaborators and interface-based dependencies for domain services.
 - Keep dependency registration cohesive and close to the layer that owns the services.
+- For frontend changes, prefer maintainable structure over quick inline implementations: components for UI, services for API access, and local environment files for local configuration.
 - Favor maintainable architecture over premature optimization.
 - For MVP work, prioritize playable end-to-end functionality.
