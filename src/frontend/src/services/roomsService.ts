@@ -2,8 +2,10 @@ import type {
   CreateRoomRequestDto,
   CreateRoomResponseDto,
   JoinRoomRequestDto,
+  PlayerWordSubmissionDto,
   RoomSnapshotDto,
   StartGameRequestDto,
+  SubmitWordsRequestDto,
   UpdateRoomSettingsRequestDto,
 } from '../contracts/theHatContracts'
 import type { ValidationProblemDetails } from '../appModels'
@@ -61,6 +63,27 @@ export async function updateRoomSettings(
     method: 'PUT',
     body: request,
     defaultErrorMessage: 'Saving lobby settings failed. Try again in a moment.',
+    notFoundMessage: 'This room no longer exists.',
+  })
+}
+
+export async function getPlayerWords(roomId: string, playerId: string): Promise<PlayerWordSubmissionDto> {
+  return sendJsonRequest<PlayerWordSubmissionDto>(
+    getApiBaseUrl(),
+    `/api/rooms/${encodeURIComponent(roomId)}/players/${encodeURIComponent(playerId)}/words`,
+    {
+      method: 'GET',
+      defaultErrorMessage: 'Loading your submitted words failed. Try again in a moment.',
+      notFoundMessage: 'This room no longer exists.',
+    },
+  )
+}
+
+export async function submitWords(roomId: string, request: SubmitWordsRequestDto): Promise<RoomSnapshotDto> {
+  return sendJsonRequest<RoomSnapshotDto>(getApiBaseUrl(), `/api/rooms/${encodeURIComponent(roomId)}/words`, {
+    method: 'PUT',
+    body: request,
+    defaultErrorMessage: 'Saving your words failed. Try again in a moment.',
     notFoundMessage: 'This room no longer exists.',
   })
 }

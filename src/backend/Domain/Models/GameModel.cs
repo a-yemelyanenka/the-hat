@@ -41,6 +41,15 @@ public sealed record PlayerSubmissionProgress
     public bool IsComplete { get; init; }
 }
 
+public sealed record PlayerWordSubmission
+{
+    public string PlayerId { get; init; } = string.Empty;
+
+    public int RequiredCount { get; init; }
+
+    public IReadOnlyList<WordEntry> Words { get; init; } = [];
+}
+
 public sealed record LobbyReadiness
 {
     public bool CanStart { get; init; }
@@ -155,6 +164,35 @@ public sealed record RoomState
                 };
             })
             .ToList();
+    }
+
+    public PlayerWordSubmission GetWordSubmission(string playerId)
+    {
+        var normalizedPlayerId = playerId?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedPlayerId))
+        {
+            throw new DomainValidationException(new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                [nameof(playerId)] = ["The player identifier is required."],
+            });
+        }
+
+        if (Players.All(player => !string.Equals(player.Id, normalizedPlayerId, StringComparison.Ordinal)))
+        {
+            throw new DomainValidationException(new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                [nameof(playerId)] = ["The player could not be found in this room."],
+            });
+        }
+
+        return new PlayerWordSubmission
+        {
+            PlayerId = normalizedPlayerId,
+            RequiredCount = Settings.WordsPerPlayer,
+            Words = Words
+                .Where(word => string.Equals(word.SubmittedByPlayerId, normalizedPlayerId, StringComparison.Ordinal))
+                .ToList(),
+        };
     }
 
     public LobbyReadiness GetLobbyReadiness()

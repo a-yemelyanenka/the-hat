@@ -10,7 +10,8 @@ namespace TheHat.Backend.Api.Controllers;
 public sealed class RoomsController(
     IRoomCreationService roomCreationService,
     IRoomJoinService roomJoinService,
-    IRoomLobbyService roomLobbyService) : ControllerBase
+    IRoomLobbyService roomLobbyService,
+    IRoomWordSubmissionService roomWordSubmissionService) : ControllerBase
 {
     [HttpGet("{roomId}")]
     [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
@@ -73,6 +74,64 @@ public sealed class RoomsController(
                 request.HostPlayerId,
                 request.Settings.ToDomain(),
                 request.OrderedPlayerIds,
+                cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        return Ok(room.ToDto());
+    }
+
+    [HttpGet("{roomId}/players/{playerId}/words")]
+    [ProducesResponseType<PlayerWordSubmissionDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<PlayerWordSubmissionDto>> GetPlayerWords(
+        string roomId,
+        string playerId,
+        CancellationToken cancellationToken)
+    {
+        PlayerWordSubmission submission;
+
+        try
+        {
+            submission = await roomWordSubmissionService.GetPlayerWordSubmissionAsync(roomId, playerId, cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        return Ok(submission.ToDto());
+    }
+
+    [HttpPut("{roomId}/words")]
+    [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RoomSnapshotDto>> SubmitWords(
+        string roomId,
+        [FromBody] SubmitWordsRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        RoomState room;
+
+        try
+        {
+            room = await roomWordSubmissionService.SubmitWordsAsync(
+                roomId,
+                request.PlayerId,
+                request.Words,
                 cancellationToken);
         }
         catch (RoomNotFoundException)

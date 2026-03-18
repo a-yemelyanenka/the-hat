@@ -48,6 +48,7 @@ public sealed class RoomLobbyApiTests : IAsyncDisposable
         var payload = await response.Content.ReadFromJsonAsync<RoomSnapshotDto>(JsonOptions);
         Assert.NotNull(payload);
         Assert.Equal(3, payload!.SubmissionProgress.Count);
+        Assert.Empty(payload.Words);
 
         var hostProgress = payload.SubmissionProgress.Single(progress => progress.PlayerId == seededRoom.HostPlayerId);
         Assert.Equal(1, hostProgress.SubmittedCount);

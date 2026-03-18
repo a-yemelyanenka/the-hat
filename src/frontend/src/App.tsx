@@ -475,6 +475,17 @@ function App() {
     }
   }
 
+  const handleLobbyRoomUpdated = (updatedRoom: RoomSnapshotDto) => {
+    setRoomSession((current) =>
+      current && current.room.roomId === updatedRoom.roomId
+        ? {
+            ...current,
+            room: updatedRoom,
+          }
+        : current,
+    )
+  }
+
   if (route.name === 'create-room') {
     return (
       <CreateRoomPage
@@ -526,6 +537,7 @@ function App() {
         onCreateRoom={() => navigate('/create-room')}
         onSaveSettings={handleSaveLobbySettings}
         onStartGame={handleStartGame}
+        onRoomUpdated={handleLobbyRoomUpdated}
       />
     )
   }

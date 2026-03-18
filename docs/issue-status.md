@@ -32,9 +32,9 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 - [x] Issue 12 — Prevent game start until all word submissions are complete
 
 ## Epic 3: Word submission
-- [ ] Issue 13 — Implement word submission API and storage
-- [ ] Issue 14 — Build word entry UX for players
-- [ ] Issue 15 — Hide submitted words from gameplay views
+- [x] Issue 13 — Implement word submission API and storage
+- [x] Issue 14 — Build word entry UX for players
+- [x] Issue 15 — Hide submitted words from gameplay views
 
 ## Epic 4: Real-time room and session management
 - [ ] Issue 16 — Implement real-time messaging for lobby and gameplay state
@@ -83,9 +83,9 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 10 | Done | Added lobby settings fetch/update APIs plus host controls to change words per player, turn timer, and order mode after players join. |  |
 | 11 | Done | Added persisted player-order management for random and manual modes, including host move-up/move-down controls and turn-order consistency coverage. |  |
 | 12 | Done | Added backend start-game validation that blocks incomplete submissions and surfaces blocking reasons directly in the lobby UI. |  |
-| 13 | Not started |  |  |
-| 14 | Not started |  |  |
-| 15 | Not started |  |  |
+| 13 | Done | Added player word submission APIs plus persisted replace-on-save storage with duplicate-word support and lobby-only editing validation. |  |
+| 14 | Done | Added a responsive lobby word-entry panel with add/edit/remove controls, remaining-word feedback, and save/reset flows. |  |
+| 15 | Done | General room snapshots no longer expose submitted word content; only the player-specific entry flow can read words before the game starts. |  |
 | 16 | Not started |  |  |
 | 17 | Not started |  |  |
 | 18 | Not started |  |  |

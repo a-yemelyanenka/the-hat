@@ -30,6 +30,11 @@ public sealed record WordSubmissionDto(
     string Text,
     string SubmittedByPlayerId);
 
+public sealed record PlayerWordSubmissionDto(
+    string PlayerId,
+    int RequiredCount,
+    IReadOnlyList<WordSubmissionDto> Words);
+
 public sealed record RoundStateDto(
     int RoundNumber,
     RoundRule Rule,

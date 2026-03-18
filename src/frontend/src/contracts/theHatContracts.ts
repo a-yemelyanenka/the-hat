@@ -35,6 +35,12 @@ export interface WordSubmissionDto {
   submittedByPlayerId: string
 }
 
+export interface PlayerWordSubmissionDto {
+  playerId: string
+  requiredCount: number
+  words: WordSubmissionDto[]
+}
+
 export interface RoundStateDto {
   roundNumber: number
   rule: RoundRule

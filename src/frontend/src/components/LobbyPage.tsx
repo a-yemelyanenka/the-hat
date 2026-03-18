@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import type { LobbySettingsFormState, RoomSessionState } from '../appModels'
 import type { CopyState } from '../appModels'
 import type { PlayerDto, RoomSnapshotDto } from '../contracts/theHatContracts'
+import { WordSubmissionPanel } from './WordSubmissionPanel'
 import './CreateRoomPage.css'
 import './LobbyPage.css'
 
@@ -21,6 +22,7 @@ type LobbyPageProps = {
   onCreateRoom: () => void
   onSaveSettings: (settings: LobbySettingsFormState, orderedPlayerIds?: string[]) => Promise<boolean>
   onStartGame: () => Promise<void>
+  onRoomUpdated: (room: RoomSnapshotDto) => void
 }
 
 function buildSettingsForm(room: RoomSnapshotDto): LobbySettingsFormState {
@@ -52,6 +54,7 @@ export function LobbyPage({
   onCreateRoom,
   onSaveSettings,
   onStartGame,
+  onRoomUpdated,
 }: LobbyPageProps) {
   const room = session?.room ?? null
   const currentPlayerId = session?.currentPlayerId ?? ''
@@ -256,6 +259,8 @@ export function LobbyPage({
             })}
           </ul>
         </article>
+
+        <WordSubmissionPanel room={room} currentPlayerId={currentPlayerId} onRoomUpdated={onRoomUpdated} />
 
         <article className="panel settings-panel">
           <h2>{isHost ? 'Lobby settings' : 'Current settings'}</h2>

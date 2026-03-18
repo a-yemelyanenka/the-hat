@@ -26,7 +26,7 @@ internal static class RoomContractMappingExtensions
             .Select(progress => progress.ToDto())
             .ToList(),
         room.GetLobbyReadiness().ToDto(),
-        room.Words.Select(word => word.ToDto()).ToList(),
+        [],
         room.Rounds
             .OrderBy(round => round.RoundNumber)
             .Select(round => round.ToDto())
@@ -35,6 +35,11 @@ internal static class RoomContractMappingExtensions
         room.CurrentTurn?.ToDto(),
         room.CreatedAtUtc,
         room.UpdatedAtUtc);
+
+    public static PlayerWordSubmissionDto ToDto(this PlayerWordSubmission submission) => new(
+        submission.PlayerId,
+        submission.RequiredCount,
+        submission.Words.Select(word => word.ToDto()).ToList());
 
     private static RoomSettingsDto ToDto(this RoomSettings settings) => new(
         settings.WordsPerPlayer,
