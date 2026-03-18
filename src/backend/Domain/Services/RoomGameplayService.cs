@@ -12,30 +12,13 @@ public sealed class RoomGameplayService(
         CancellationToken cancellationToken = default)
     {
         var room = await GetRoomAsync(roomId, cancellationToken);
-        var normalizedPlayerId = ValidatePlayer(room, playerId, "A valid player identifier is required to load gameplay.");
 
         if (roomEngine.AdvanceState(room))
         {
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        var currentTurn = room.CurrentTurn;
-        var isCurrentPlayerExplainer = string.Equals(currentTurn?.ExplainerPlayerId, normalizedPlayerId, StringComparison.Ordinal);
-        var isCurrentPlayerGuesser = string.Equals(currentTurn?.GuesserPlayerId, normalizedPlayerId, StringComparison.Ordinal);
-        var activeWordText = isCurrentPlayerExplainer && !string.IsNullOrWhiteSpace(currentTurn?.ActiveWordId)
-            ? room.Words.Single(word => word.Id == currentTurn.ActiveWordId).Text
-            : null;
-
-        return new PlayerGameplayState
-        {
-            Room = room,
-            PlayerId = normalizedPlayerId,
-            CurrentRule = room.TryGetCurrentRound()?.Rule,
-            ActiveWordText = activeWordText,
-            RemainingTurnSeconds = roomEngine.GetRemainingTurnSeconds(room),
-            IsCurrentPlayerExplainer = isCurrentPlayerExplainer,
-            IsCurrentPlayerGuesser = isCurrentPlayerGuesser,
-        };
+        return roomEngine.CreateGameplayState(room, playerId);
     }
 
     public async Task<RoomState> ConfirmGuessAsync(
@@ -56,6 +39,34 @@ public sealed class RoomGameplayService(
         try
         {
             roomEngine.RecordCorrectGuess(room);
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw CreateGameplayValidationException(exception.Message);
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return room;
+    }
+
+    public async Task<RoomState> EndTurnAsync(
+        string roomId,
+        string playerId,
+        CancellationToken cancellationToken = default)
+    {
+        var room = await GetRoomAsync(roomId, cancellationToken);
+        var normalizedPlayerId = ValidatePlayer(room, playerId, "A valid player identifier is required to end the current turn.");
+
+        if (roomEngine.AdvanceState(room))
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        ValidateInterruptedTurnExplainer(room, normalizedPlayerId);
+
+        try
+        {
+            roomEngine.EndTurn(room);
         }
         catch (InvalidOperationException exception)
         {
@@ -172,6 +183,27 @@ public sealed class RoomGameplayService(
         throw new DomainValidationException(new Dictionary<string, string[]>(StringComparer.Ordinal)
         {
             [nameof(playerId)] = ["Only the active explainer can confirm a guessed word."],
+        });
+    }
+
+    private static void ValidateInterruptedTurnExplainer(RoomState room, string playerId)
+    {
+        var currentTurn = room.CurrentTurn;
+        var turnPlayers = room.Players
+            .Where(player => string.Equals(player.Id, currentTurn?.ExplainerPlayerId, StringComparison.Ordinal)
+                || string.Equals(player.Id, currentTurn?.GuesserPlayerId, StringComparison.Ordinal))
+            .ToList();
+
+        if (room.Phase == RoomPhase.InProgress
+            && string.Equals(currentTurn?.ExplainerPlayerId, playerId, StringComparison.Ordinal)
+            && turnPlayers.Any(player => !player.IsActive))
+        {
+            return;
+        }
+
+        throw new DomainValidationException(new Dictionary<string, string[]>(StringComparer.Ordinal)
+        {
+            [nameof(playerId)] = ["Only the active explainer can end an interrupted turn."],
         });
     }
 

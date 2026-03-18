@@ -126,6 +126,10 @@ export interface ConfirmGuessRequestDto {
   playerId: string
 }
 
+export interface EndTurnRequestDto {
+  playerId: string
+}
+
 export interface PauseGameRequestDto {
   hostPlayerId: string
 }

@@ -27,6 +27,10 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
   const [submitError, setSubmitError] = useState('')
   const [submitSuccess, setSubmitSuccess] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const currentPlayer = room.players.find((player) => player.playerId === currentPlayerId) ?? null
+  const hasCurrentPlayer = currentPlayer !== null
+  const currentPlayerIsActive = currentPlayer?.isActive ?? false
+  const canEditWords = room.phase === 'lobby' && currentPlayer?.isActive === true
 
   useEffect(() => {
     let isDisposed = false
@@ -72,12 +76,30 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
       }
     }
 
+    if (!hasCurrentPlayer) {
+      setIsLoading(false)
+      setLoadError('Your player session is no longer available in this room.')
+      return () => {
+        isDisposed = true
+      }
+    }
+
+    if (!currentPlayerIsActive) {
+      setIsLoading(true)
+      setLoadError('')
+      setSubmitError('')
+      setSubmitSuccess('')
+      return () => {
+        isDisposed = true
+      }
+    }
+
     void loadWords()
 
     return () => {
       isDisposed = true
     }
-  }, [room.phase, room.roomId, currentPlayerId])
+  }, [room.phase, room.roomId, currentPlayerId, hasCurrentPlayer, currentPlayerIsActive])
 
   useEffect(() => {
     setRequiredCount(room.settings.wordsPerPlayer)
@@ -134,6 +156,12 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
   }
 
   const handleSubmit = async () => {
+    if (!canEditWords) {
+      setSubmitError('Reconnecting your player session. Please wait a moment and try again.')
+      setSubmitSuccess('')
+      return
+    }
+
     const normalizedWords = draftWords.map((word) => word.trim())
 
     if (normalizedWords.length !== requiredCount) {
@@ -206,6 +234,9 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
 
       {isLoading ? <p className="status-note">Loading your saved words…</p> : null}
       {loadError ? <p className="banner banner-error compact-banner">{loadError}</p> : null}
+      {!isLoading && room.phase === 'lobby' && currentPlayer && !currentPlayer.isActive ? (
+        <p className="status-note">Reconnecting your player session…</p>
+      ) : null}
 
       {!isLoading && !loadError ? (
         <>
@@ -219,13 +250,14 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
                     value={word}
                     maxLength={80}
                     placeholder="Enter a word or short phrase"
+                    disabled={!canEditWords || isSaving}
                     onChange={(event) => updateWordAtIndex(index, event)}
                   />
                 </label>
                 <button
                   className="button button-secondary word-entry-button"
                   type="button"
-                  disabled={draftWords.length === 1 || isSaving}
+                  disabled={draftWords.length === 1 || isSaving || !canEditWords}
                   onClick={() => removeWordField(index)}
                 >
                   Remove
@@ -238,13 +270,13 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
           {submitSuccess ? <p className="banner banner-success compact-banner">{submitSuccess}</p> : null}
 
           <div className="word-panel-actions">
-            <button className="button button-secondary" type="button" disabled={isSaving} onClick={addWordField}>
+            <button className="button button-secondary" type="button" disabled={isSaving || !canEditWords} onClick={addWordField}>
               Add word
             </button>
-            <button className="button button-secondary" type="button" disabled={!isDirty || isSaving} onClick={restoreSavedWords}>
+            <button className="button button-secondary" type="button" disabled={!isDirty || isSaving || !canEditWords} onClick={restoreSavedWords}>
               Reset
             </button>
-            <button className="button button-primary" type="button" disabled={isSaving || !isDirty} onClick={() => void handleSubmit()}>
+            <button className="button button-primary" type="button" disabled={isSaving || !isDirty || !canEditWords} onClick={() => void handleSubmit()}>
               {isSaving ? 'Saving words…' : 'Save words'}
             </button>
           </div>

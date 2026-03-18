@@ -7,9 +7,11 @@ public sealed class RoomHub(
     IRoomLobbyService roomLobbyService,
     IRoomPresenceService roomPresenceService,
     IRoomRealtimeNotifier roomRealtimeNotifier,
-    IRoomConnectionTracker roomConnectionTracker) : Hub
+    IRoomConnectionTracker roomConnectionTracker,
+    IRoomEngine roomEngine) : Hub
 {
     public const string RoomUpdatedMethodName = "roomUpdated";
+    public const string GameplayUpdatedMethodName = "gameplayUpdated";
 
     public async Task SubscribeToRoom(string roomId, string? playerId = null)
     {
@@ -45,6 +47,18 @@ public sealed class RoomHub(
             }
 
             await Clients.Caller.SendAsync(RoomUpdatedMethodName, room.ToDto(), Context.ConnectionAborted);
+
+            if (!string.IsNullOrWhiteSpace(playerId))
+            {
+                try
+                {
+                    var gameplayState = roomEngine.CreateGameplayState(room, playerId);
+                    await Clients.Caller.SendAsync(GameplayUpdatedMethodName, gameplayState.ToDto(), Context.ConnectionAborted);
+                }
+                catch (DomainValidationException)
+                {
+                }
+            }
         }
         catch (RoomNotFoundException)
         {
@@ -75,6 +89,16 @@ public sealed class RoomHub(
             {
                 if (!string.IsNullOrWhiteSpace(registration.PlayerId))
                 {
+                    var playerStillConnected = roomConnectionTracker
+                        .GetRoomConnections(registration.RoomId)
+                        .Any(existingRegistration => string.Equals(existingRegistration.PlayerId, registration.PlayerId, StringComparison.Ordinal));
+
+                    if (playerStillConnected)
+                    {
+                        await base.OnDisconnectedAsync(exception);
+                        return;
+                    }
+
                     var room = await roomPresenceService.DeactivatePlayerAsync(registration.RoomId, registration.PlayerId, CancellationToken.None);
                     if (room is not null)
                     {

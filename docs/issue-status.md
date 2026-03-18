@@ -88,7 +88,7 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 15 | Done | General room snapshots no longer expose submitted word content; only the player-specific entry flow can read words before the game starts. |  |
 | 16 | Done | Added SignalR-based room snapshot updates, automatic reconnect/resubscribe, and frontend polling fallback when realtime is unavailable. |  |
 | 17 | Done | Added invite-based rejoin API plus join-flow recovery so the same trimmed display name restores the existing player entry without creating duplicates. |  |
-| 18 | Done | SignalR subscriptions now track player presence, disconnects mark players inactive, and affected turns rotate or pause predictably until another player reconnects. |  |
+| 18 | Done | SignalR subscriptions now track player presence, disconnects mark players inactive without resetting the active turn, and the explainer can explicitly end an interrupted turn before rotation or pause resumes. |  |
 | 19 | Done | Added an explicit gameplay state machine with `InProgress`, `Paused`, `RoundSummary`, and `Completed` room phases. |  |
 | 20 | Done | Turn rotation now follows the ordered active player ring and carries rotation forward across rounds. |  |
 | 21 | Done | Each round now stores and exposes its specific rule so the frontend can show the active instructions. |  |
