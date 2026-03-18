@@ -3,6 +3,7 @@ import type {
   CreateRoomResponseDto,
   JoinRoomRequestDto,
   PlayerWordSubmissionDto,
+  RejoinRoomRequestDto,
   RoomSnapshotDto,
   StartGameRequestDto,
   SubmitWordsRequestDto,
@@ -53,6 +54,19 @@ export async function joinRoom(inviteCode: string, request: JoinRoomRequestDto):
     defaultErrorMessage: 'Joining the room failed. Try again in a moment.',
     notFoundMessage: 'This invite link is invalid or the room no longer exists.',
   })
+}
+
+export async function rejoinRoom(inviteCode: string, request: RejoinRoomRequestDto): Promise<RoomSnapshotDto> {
+  return sendJsonRequest<RoomSnapshotDto>(
+    getApiBaseUrl(),
+    `/api/rooms/invite/${encodeURIComponent(inviteCode)}/rejoin`,
+    {
+      method: 'POST',
+      body: request,
+      defaultErrorMessage: 'Rejoining the room failed. Try again in a moment.',
+      notFoundMessage: 'This invite link is invalid or the room no longer exists.',
+    },
+  )
 }
 
 export async function getRoom(roomId: string): Promise<RoomSnapshotDto> {

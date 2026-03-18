@@ -6,4 +6,9 @@ public interface IRoomJoinService
         string inviteCode,
         string displayName,
         CancellationToken cancellationToken = default);
+
+    Task<RoomState> RejoinRoomAsync(
+        string inviteCode,
+        string displayName,
+        CancellationToken cancellationToken = default);
 }

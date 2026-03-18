@@ -206,6 +206,34 @@ public sealed class RoomsController(
         return Ok(room.ToDto());
     }
 
+    [HttpPost("invite/{inviteCode}/rejoin")]
+    [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RoomSnapshotDto>> RejoinRoom(
+        string inviteCode,
+        [FromBody] RejoinRoomRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        RoomState room;
+
+        try
+        {
+            room = await roomJoinService.RejoinRoomAsync(inviteCode, request.DisplayName, cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
+        return Ok(room.ToDto());
+    }
+
     private ModelStateDictionary CreateModelState(DomainValidationException exception)
     {
         var modelState = new ModelStateDictionary();

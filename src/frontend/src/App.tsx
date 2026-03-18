@@ -11,7 +11,7 @@ import type {
   RoomSnapshotDto,
 } from './contracts/theHatContracts'
 import { createRoomRealtimeConnection } from './services/roomRealtimeService'
-import { createRoom, getRoom, joinRoom, RoomServiceError, startGame, updateRoomSettings } from './services/roomsService'
+import { createRoom, getRoom, joinRoom, rejoinRoom, RoomServiceError, startGame, updateRoomSettings } from './services/roomsService'
 import type {
   CopyState,
   CreateRoomFormState,
@@ -124,6 +124,12 @@ function resolveCurrentPlayerId(room: RoomSnapshotDto, displayName: string): str
 function getFirstProblemMessage(problem: ValidationProblemDetails): string {
   const firstMessage = Object.values(problem.errors ?? {}).flat()[0]
   return firstMessage ?? problem.title ?? 'The request could not be completed.'
+}
+
+function hasDuplicateDisplayNameProblem(problem: ValidationProblemDetails): boolean {
+  const messages = Object.entries(problem.errors ?? {}).find(([key]) => key.toLowerCase() === 'displayname')?.[1] ?? []
+
+  return messages.some((message) => message.toLowerCase().includes('already taken'))
 }
 
 function App() {
@@ -444,6 +450,31 @@ function App() {
     } catch (error) {
       if (error instanceof RoomServiceError) {
         if (error.validationProblem) {
+          if (hasDuplicateDisplayNameProblem(error.validationProblem)) {
+            try {
+              const result = await rejoinRoom(route.inviteCode, payload)
+              setRoomSession({
+                room: result,
+                currentPlayerId: resolveCurrentPlayerId(result, payload.displayName),
+              })
+              navigate(`/rooms/${result.roomId}/lobby`)
+              return
+            } catch (rejoinError) {
+              if (rejoinError instanceof RoomServiceError) {
+                if (rejoinError.validationProblem) {
+                  applyJoinValidationProblem(rejoinError.validationProblem)
+                  return
+                }
+
+                setJoinServerError(rejoinError.message)
+                return
+              }
+
+              setJoinServerError('Rejoining the room failed. Try again in a moment.')
+              return
+            }
+          }
+
           applyJoinValidationProblem(error.validationProblem)
           return
         }

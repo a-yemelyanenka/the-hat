@@ -71,7 +71,45 @@ public sealed class RoomJoinApiTests : IAsyncDisposable
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private async Task SeedRoomAsync()
+    [Fact]
+    public async Task RejoinRoom_RestoresMatchingPlayerWithoutCreatingDuplicate()
+    {
+        await SeedRoomAsync(includeInactiveGuest: true);
+
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/rooms/invite/ROOM1234/rejoin", new RejoinRoomRequestDto("  bob  "));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<RoomSnapshotDto>(JsonOptions);
+        Assert.NotNull(payload);
+        Assert.Equal(2, payload!.Players.Count);
+
+        var rejoinedPlayer = Assert.Single(payload.Players, player => player.DisplayName == "Bob");
+        Assert.True(rejoinedPlayer.IsActive);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<TheHatDbContext>();
+        var persistedRoom = await dbContext.Rooms.AsNoTracking().SingleAsync();
+
+        Assert.Equal(2, persistedRoom.Players.Count);
+        Assert.True(persistedRoom.Players.Single(player => player.DisplayName == "Bob").IsActive);
+    }
+
+    [Fact]
+    public async Task RejoinRoom_ReturnsBadRequestWhenPlayerCannotBeMatched()
+    {
+        await SeedRoomAsync();
+
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/rooms/invite/ROOM1234/rejoin", new RejoinRoomRequestDto("Bob"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    private async Task SeedRoomAsync(bool includeInactiveGuest = false)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<TheHatDbContext>();
@@ -92,6 +130,19 @@ public sealed class RoomJoinApiTests : IAsyncDisposable
             },
             nowUtc: DateTime.UtcNow,
             inviteCode: "ROOM1234");
+
+        if (includeInactiveGuest)
+        {
+            room.Players.Add(new PlayerState
+            {
+                Id = "player-bob",
+                DisplayName = "Bob",
+                NormalizedDisplayName = new DisplayNameNormalizer().Normalize("Bob"),
+                IsActive = false,
+                OrderIndex = 1,
+                Score = 2,
+            });
+        }
 
         dbContext.Rooms.Add(room);
         await dbContext.SaveChangesAsync();

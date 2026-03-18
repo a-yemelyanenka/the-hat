@@ -31,7 +31,7 @@ export function JoinRoomPage({
         </button>
         <div>
           <p className="eyebrow">Join room</p>
-          <h1>Enter a display name to join the lobby</h1>
+          <h1>Enter a display name to join or rejoin the lobby</h1>
           <p className="lead">
             Invite code <span className="join-room-invite-code">{inviteCode}</span>
           </p>
@@ -74,8 +74,8 @@ export function JoinRoomPage({
         <aside className="panel join-room-copy" aria-label="Join room details">
           <h2>Before you join</h2>
           <p>
-            The host is already included as a player. Once you join, the saved lobby view will show the host and the
-            latest player list for this browser session.
+            The host is already included as a player. Use the same trimmed display name to restore your player entry
+            after a refresh or reconnect.
           </p>
           <dl className="summary-list">
             <div>

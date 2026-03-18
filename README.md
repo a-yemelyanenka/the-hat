@@ -49,7 +49,7 @@ Currently implemented API:
 
 - `POST /api/rooms` creates a lobby room for the host and returns the room snapshot plus a shareable invite link.
 - `GET /api/rooms/{roomId}` returns the latest room snapshot.
-- `PUT /api/rooms/{roomId}/settings`, `PUT /api/rooms/{roomId}/words`, `POST /api/rooms/{roomId}/start`, and `POST /api/rooms/invite/{inviteCode}/join` update room state.
+- `PUT /api/rooms/{roomId}/settings`, `PUT /api/rooms/{roomId}/words`, `POST /api/rooms/{roomId}/start`, `POST /api/rooms/invite/{inviteCode}/join`, and `POST /api/rooms/invite/{inviteCode}/rejoin` update room state.
 - `GET /hubs/rooms` exposes the SignalR hub used for live room snapshots.
 
 ### Frontend
@@ -67,6 +67,7 @@ Currently implemented frontend flow:
 - `/` shows the entry page for room creation.
 - `/create-room` lets the host configure initial settings and create a room.
 - A successful create request routes the host to a simple lobby view at `/rooms/{roomId}/lobby`.
+- Re-entering the same trimmed display name on an invite link restores the existing player entry instead of creating a duplicate.
 - The lobby prefers SignalR for live room updates and automatically falls back to periodic `GET /api/rooms/{roomId}` refreshes if realtime transport is unavailable.
 
 ## Realtime room updates
