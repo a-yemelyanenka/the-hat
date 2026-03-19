@@ -2,17 +2,20 @@
   display: flex;
   justify-content: flex-end;
   padding: 1rem 1.5rem 0;
+  box-sizing: border-box;
 }
 
 .language-switcher {
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
+  max-width: 100%;
   padding: 0.65rem 0.9rem;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--panel-muted);
   box-shadow: var(--shadow);
+  box-sizing: border-box;
 }
 
 .language-switcher-label {
@@ -22,14 +25,17 @@
 }
 
 .language-switcher-actions {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, auto));
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .language-switcher-button {
   width: auto;
   min-width: 0;
   padding: 0.55rem 0.85rem;
+  white-space: nowrap;
 }
 
 .language-switcher-button-active {
@@ -48,6 +54,11 @@
 .app-shell-narrow {
   max-width: 72rem;
   margin: 0 auto;
+}
+
+.gameplay-shell {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .page-header,
@@ -153,21 +164,38 @@
 @media (max-width: 768px) {
   .app-toolbar {
     padding: 1rem 1rem 0;
+    justify-content: stretch;
   }
 
   .language-switcher {
     width: 100%;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
     border-radius: 1rem;
+    padding: 0.9rem;
+  }
+
+  .language-switcher-label {
+    text-align: left;
   }
 
   .language-switcher-actions {
-    flex: 1;
-    justify-content: flex-end;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .language-switcher-button {
+    padding: 0.7rem 0.5rem;
+    font-size: 0.95rem;
   }
 
   .app-shell {
     padding: 1.5rem 1rem;
+  }
+
+  .gameplay-shell {
+    padding-bottom: calc(8rem + env(safe-area-inset-bottom));
   }
 
   .lead {

@@ -1,53 +1,67 @@
-.gameplay-grid {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.gameplay-shell-focused {
+  gap: 1.25rem;
 }
 
-.gameplay-hero-panel,
-.gameplay-word-panel,
-.gameplay-scoreboard-panel,
-.gameplay-summary-panel {
-  grid-column: span 2;
+.gameplay-page-header {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.gameplay-page-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.gameplay-page-header h1 {
+  margin: 0;
+  font-size: clamp(1.85rem, 3.3vw, 2.8rem);
+}
+
+.gameplay-focus-topbar,
+.gameplay-stage-timer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.gameplay-focus-topbar {
+  padding: 0.25rem 0;
+}
+
+.gameplay-hud,
+.gameplay-detail-tabs,
+.gameplay-stage-header,
+.gameplay-stage-summary,
+.gameplay-stage-word-layout,
+.gameplay-stage-support,
+.gameplay-stage-actions,
+.gameplay-stage-badges,
+.gameplay-stage-target-inline,
+.gameplay-detail-grid,
+.gameplay-detail-header,
+.gameplay-inline-actions,
+.scoreboard-list {
+  display: grid;
+  gap: 1rem;
 }
 
 .gameplay-status-row {
-  grid-template-columns: repeat(3, max-content);
-}
-
-.gameplay-panel {
-  align-content: start;
-}
-
-.gameplay-hero-panel {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
-  align-items: end;
-}
-
-.gameplay-hero-copy {
-  display: grid;
+  grid-template-columns: repeat(2, max-content);
   gap: 0.75rem;
+  align-items: center;
 }
 
-.gameplay-hero-lead {
-  margin: 0;
-}
-
-.gameplay-hero-meta,
-.turn-role-grid {
-  display: grid;
-  gap: 0.9rem;
-}
-
-.gameplay-hero-meta {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.gameplay-hud {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .hero-stat,
-.turn-role-card,
-.transition-rule-card {
+.gameplay-stage-focus-card,
+.gameplay-detail-card,
+.gameplay-share-card {
   padding: 1rem;
   border-radius: 1rem;
   border: 1px solid var(--border);
@@ -60,59 +74,278 @@
 }
 
 .hero-stat span,
-.turn-role-card p,
-.transition-rule-card p {
-  color: var(--text-m);
+.gameplay-detail-card p,
+.gameplay-stage-focus-card p,
+.gameplay-share-card p,
+.gameplay-turn-summary dt {
+  color: var(--text-muted);
 }
 
 .hero-stat strong {
-  font-size: 1.35rem;
-}
-
-.turn-role-grid {
-  margin-top: 1rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.turn-role-card {
-  display: grid;
-  gap: 0.45rem;
-}
-
-.turn-role-card-active {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
-}
-
-.round-transition-copy {
-  display: grid;
-  gap: 1rem;
-}
-
-.gameplay-next-turn-card {
-  max-width: 30rem;
-}
-
-.gameplay-rule-title,
-.active-word {
+  font-size: 1.2rem;
   color: var(--text-h);
 }
 
-.active-word {
-  font-size: clamp(2rem, 5vw, 3.25rem);
-  font-weight: 800;
-  line-height: 1.05;
-  word-break: break-word;
+.gameplay-hud-timer strong {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
 }
 
-.observer-copy {
-  max-width: 32rem;
+.gameplay-stage {
+  display: grid;
+  gap: 1.5rem;
+  min-height: min(68vh, 42rem);
 }
 
-.host-actions,
-.scoreboard-list {
+.gameplay-stage-explainer {
+  background:
+    radial-gradient(circle at top, color-mix(in srgb, var(--accent) 14%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--panel-highlight) 0%, rgba(255, 255, 255, 0) 100%),
+    var(--social-bg);
+}
+
+.gameplay-stage-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+}
+
+.gameplay-stage-copy {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.gameplay-stage-copy h2 {
+  margin: 0;
+  text-wrap: balance;
+}
+
+.gameplay-stage-lead {
+  margin: 0;
+  max-width: 42rem;
+}
+
+.gameplay-stage-badges {
+  justify-items: end;
+  align-content: start;
+}
+
+.gameplay-stage-summary {
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  min-height: 100%;
+}
+
+.gameplay-stage-focus-card {
+  display: grid;
+  gap: 0.75rem;
+  width: min(100%, 32rem);
+  text-align: center;
+}
+
+.gameplay-stage-focus-card strong {
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  color: var(--text-h);
+}
+
+.gameplay-stage-focus-card-plain {
+  background: color-mix(in srgb, var(--panel-muted) 88%, var(--accent-bg));
+}
+
+.gameplay-stage-word-layout {
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  min-height: 100%;
+}
+
+.gameplay-stage-target-card,
+.gameplay-stage-target-inline {
+  display: grid;
+  gap: 0.35rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.gameplay-stage-target-card {
+  width: min(100%, 24rem);
+  padding: 0.9rem 1.1rem;
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--panel-muted) 82%, var(--accent-bg));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.gameplay-stage-target-card strong,
+.gameplay-stage-target-inline strong {
+  color: var(--text-h);
+  font-size: clamp(1.2rem, 3vw, 1.7rem);
+}
+
+.gameplay-stage-target-inline-dual {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: 100%;
+}
+
+.gameplay-stage-target-inline-dual > div {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.gameplay-stage-word-frame {
   display: grid;
   gap: 1rem;
+  align-content: center;
+  justify-items: center;
+  width: min(100%, 44rem);
+  min-height: min(48vh, 24rem);
+  padding: 1.5rem;
+  border-radius: 1.5rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  background: color-mix(in srgb, var(--panel-muted) 85%, var(--accent-bg));
+}
+
+.gameplay-stage-word-frame-ready {
+  align-content: center;
+}
+
+.gameplay-stage-ready-title {
+  margin: 0;
+  color: var(--text-h);
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.gameplay-stage-ready-body {
+  margin: 0;
+  max-width: 26rem;
+  color: var(--text-muted);
+}
+
+.gameplay-stage-timer {
+  justify-content: center;
+  align-self: start;
+  padding: 0.6rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel-muted) 92%, transparent);
+  color: var(--text-h);
+}
+
+.gameplay-stage-timer span {
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.gameplay-stage-timer strong {
+  font-size: clamp(1.5rem, 4vw, 2.2rem);
+  line-height: 1;
+}
+
+.gameplay-stage-timer-warning {
+  border-color: rgba(217, 119, 6, 0.45);
+  background: rgba(217, 119, 6, 0.12);
+  color: #b45309;
+  box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.08);
+}
+
+.gameplay-stage-timer-critical {
+  border-color: rgba(217, 70, 98, 0.45);
+  background: rgba(217, 70, 98, 0.12);
+  color: var(--danger);
+  box-shadow: 0 0 0 1px rgba(217, 70, 98, 0.08), 0 0 1.25rem rgba(217, 70, 98, 0.16);
+  animation: gameplay-timer-pulse 900ms ease-in-out infinite alternate;
+}
+
+.gameplay-stage-timer-paused {
+  border-color: rgba(217, 119, 6, 0.35);
+  background: rgba(217, 119, 6, 0.1);
+  color: #b45309;
+}
+
+.gameplay-stage-timer-ready {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  background: color-mix(in srgb, var(--panel-muted) 88%, var(--accent-bg));
+  color: var(--accent);
+}
+
+.active-word {
+  margin: 0;
+  color: var(--text-h);
+  font-size: clamp(3rem, 8vw, 5.75rem);
+  font-weight: 900;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+.gameplay-stage-support {
+  justify-items: center;
+  min-height: 3.75rem;
+}
+
+.gameplay-stage-note {
+  max-width: 36rem;
+  text-align: center;
+}
+
+.gameplay-stage-actions {
+  width: min(100%, 26rem);
+  min-height: 3.5rem;
+  align-content: start;
+}
+
+.gameplay-detail-tabs {
+  grid-template-columns: repeat(3, minmax(0, auto));
+  justify-content: start;
+}
+
+.gameplay-detail-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.gameplay-detail-header h2 {
+  margin: 0;
+}
+
+.gameplay-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gameplay-detail-card,
+.gameplay-share-card {
+  display: grid;
+  gap: 0.75rem;
+  align-content: start;
+}
+
+.gameplay-detail-card strong,
+.gameplay-share-card summary,
+.gameplay-navigation-card summary {
+  color: var(--text-h);
+}
+
+.gameplay-share-card summary,
+.gameplay-navigation-card summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.gameplay-share-card[open] summary,
+.gameplay-navigation-card[open] summary {
+  margin-bottom: 0.5rem;
+}
+
+.gameplay-navigation-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gameplay-turn-summary {
+  margin: 0;
 }
 
 .scoreboard-list {
@@ -136,32 +369,94 @@
   opacity: 0.72;
 }
 
+@keyframes gameplay-timer-pulse {
+  from {
+    transform: scale(1);
+    box-shadow: 0 0 0 1px rgba(217, 70, 98, 0.08), 0 0 0.65rem rgba(217, 70, 98, 0.12);
+  }
+
+  to {
+    transform: scale(1.025);
+    box-shadow: 0 0 0 1px rgba(217, 70, 98, 0.1), 0 0 1.4rem rgba(217, 70, 98, 0.24);
+  }
+}
+
 @media (max-width: 900px) {
-  .gameplay-grid {
+  .gameplay-page-header,
+  .gameplay-stage-header,
+  .gameplay-hud,
+  .gameplay-detail-grid {
     grid-template-columns: 1fr;
   }
 
-  .gameplay-hero-panel,
-  .gameplay-word-panel,
-  .gameplay-scoreboard-panel,
-  .gameplay-summary-panel {
-    grid-column: span 1;
+  .gameplay-page-actions {
+    justify-content: start;
   }
 
-  .gameplay-hero-panel,
-  .gameplay-hero-meta,
-  .turn-role-grid {
-    grid-template-columns: 1fr;
+  .gameplay-stage-badges {
+    justify-items: start;
+    grid-auto-flow: column;
+    justify-content: start;
+    flex-wrap: wrap;
   }
 
   .gameplay-status-row {
     grid-template-columns: 1fr;
   }
+
+  .gameplay-focus-topbar {
+    gap: 0.5rem;
+  }
 }
 
 @media (max-width: 768px) {
+  .gameplay-shell-focused {
+    gap: 1rem;
+  }
+
+  .gameplay-stage {
+    min-height: min(62vh, 38rem);
+    padding: 1.15rem;
+  }
+
+  .gameplay-stage-word-frame {
+    min-height: min(42vh, 18rem);
+    padding: 1.15rem;
+  }
+
+  .gameplay-stage-target-inline-dual {
+    grid-template-columns: 1fr;
+  }
+
+  .active-word {
+    font-size: clamp(3.2rem, 13vw, 5rem);
+  }
+
+  .gameplay-detail-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .gameplay-navigation-actions {
+    grid-template-columns: 1fr;
+  }
+
   .scoreboard-row {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .invite-code,
+  .invite-link {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-height: 540px) and (orientation: landscape) {
+  .gameplay-stage {
+    min-height: auto;
+  }
+
+  .gameplay-stage-word-frame {
+    min-height: 14rem;
   }
 }

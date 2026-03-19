@@ -710,3 +710,119 @@ Model used for this conversation: GPT-5.4
 **Model:** GPT-5.4
 
 > there is overlapping phrase
+
+## Prompt 53
+**Model:** GPT-5.4
+
+> <attachment id="prompt:implement-issues.prompt.md" filePath="d:\Repos\the-hat\.github\prompts\implement-issues.prompt.md">
+> Prompt instructions file:
+> # Implement backlog issues
+>
+> Take a look at [docs/features.md](../../docs/features.md) and implement the issue or issues provided after `/`.
+>
+> ## Instructions
+> - Read the requested issue definitions in [docs/features.md](../../docs/features.md).
+> - Implement only the requested issue scope.
+> - Keep changes minimal and focused.
+> - Follow the project guidance in [copilot-instructions.md](../copilot-instructions.md).
+> - Add or update tests when the issue changes core logic or state transitions.
+> - Keep documentation aligned with the implementation.
+> - When the issue is implemented, update [docs/issue-status.md](../../docs/issue-status.md).
+> - Also update [docs/developer/prompts.md](../../docs/developer/prompts.md) with the latest user prompt and model.
+>
+> ## Usage examples
+> - `/1`
+> - `/6,8,9`
+> - `/19-24`
+>
+> ## Expected workflow
+> 1. Read the matching issues in [docs/features.md](../../docs/features.md).
+> 2. Identify the affected files.
+> 3. Implement the requested issues.
+> 4. Validate the changes.
+> 5. Update [docs/issue-status.md](../../docs/issue-status.md).
+> 6. Summarize completed work and any follow-up items.
+>
+> </attachment>
+> Follow instructions in [implement-issues.prompt.md](file:///d%3A/Repos/the-hat/.github/prompts/implement-issues.prompt.md).
+> 32
+
+## Prompt 54
+**Model:** GPT-5.4
+
+> Act as a Seniore UI UX developer with game development experience. Now, everything is localted on one page and it looks too overloaded. Also, when I start the game, the word that I explain exists somewhere in the middle. 
+>
+> So, now it is not user friendly game. How can we improve it?
+
+## Prompt 55
+**Model:** GPT-5.4
+
+> let's implement it
+
+## Prompt 56
+**Model:** GPT-5.4
+
+> Still UI is overloaded, when the game started, the most important is timer and the word. If I scroll somewhere, it's hard to find the word
+
+## Prompt 57
+**Model:** GPT-5.4
+
+> let's move timer close to the word so It always visible, this is one of the most important thing
+>
+> When timer closes to the end, let's color it and add some effect
+>
+> Also, when I uncollpase Show Deatails, I cannot collapse it back
+>
+> Also, Let's collapse top panel as well during the game
+
+## Prompt 58
+**Model:** GPT-5.4
+
+> Small adjustment:
+>
+> no need to overlapp main card over the last content:
+>
+> If I open the details, I can then just collapse it, no need to stick it
+
+## Prompt 59
+**Model:** GPT-5.4
+
+> Look. there are a lot of overlapping
+
+## Prompt 60
+**Model:** GPT-5.4
+
+> visuall highlt name to whome explainer is explainging
+
+## Prompt 61
+**Model:** GPT-5.4
+
+> I don't really like that confir guess word button is sticked to the scroll, I want to have near the word
+
+## Prompt 62
+**Model:** GPT-5.4
+
+> when I click start turn, UI jumps and button configrm guessed word jumps down
+
+## Prompt 63
+**Model:** GPT-5.4
+
+> details and scoreboard should be collapsable/uncollapsable. Now, wehn I uncollapse for example details, I cannot collapse it back
+
+## Prompt 64
+**Model:** GPT-5.4
+
+> Mobile version, fix languages panel
+
+## Prompt 65
+**Model:** GPT-5.4
+
+> No need to stick button pause game
+
+## Prompt 66
+**Model:** GPT-5.4
+
+> Button to create a new room disappeared
+> Also, need to have button to go to the initial screen
+>
+> Please add it but keep it most UX friendly and to not click it accidently during the game

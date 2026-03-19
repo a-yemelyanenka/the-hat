@@ -943,6 +943,7 @@ function App() {
           onPauseGame={handlePauseGame}
           onResumeGame={handleResumeGame}
           onContinueRound={handleContinueRound}
+          onGoHome={() => navigate('/')}
           onCreateRoom={() => navigate('/create-room')}
           copyState={copyState}
           inviteLink={lobbySession ? buildInviteLink(lobbySession.room.inviteCode) : ''}
