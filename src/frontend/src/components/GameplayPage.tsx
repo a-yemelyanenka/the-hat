@@ -1,36 +1,37 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { RealtimeSyncState, RoomSessionState } from '../appModels'
+import type { RealtimeSyncState } from '../appModels'
 import type { GameplayViewDto, PlayerDto, RoundRule } from '../contracts/theHatContracts'
-import type { CopyState } from '../appModels'
+import { useRoomSessionContext } from '../hooks/useRoomSessionContext'
+import { useCountdownTimer } from '../hooks/useCountdownTimer'
 import './CreateRoomPage.css'
 import './LobbyPage.css'
 import './GameplayPage.css'
 
-type GameplayPageProps = {
-  session: RoomSessionState | null
-  gameplayView: GameplayViewDto | null
-  syncError: string
-  realtimeSyncState: RealtimeSyncState
-  isRefreshing: boolean
-  isStartingTurn: boolean
-  isConfirmingGuess: boolean
-  isEndingTurn: boolean
-  isPausingGame: boolean
-  isResumingGame: boolean
-  isContinuingRound: boolean
-  actionError: string
+type GameplayActions = {
   onStartTurn: () => Promise<void>
   onConfirmGuess: () => Promise<void>
   onEndTurn: () => Promise<void>
   onPauseGame: () => Promise<void>
   onResumeGame: () => Promise<void>
   onContinueRound: () => Promise<void>
+}
+
+type GameplayPendingState = {
+  isStartingTurn: boolean
+  isConfirmingGuess: boolean
+  isEndingTurn: boolean
+  isPausingGame: boolean
+  isResumingGame: boolean
+  isContinuingRound: boolean
+}
+
+type GameplayPageProps = {
+  gameplayView: GameplayViewDto | null
+  pending: GameplayPendingState
+  actionError: string
+  actions: GameplayActions
   onGoHome: () => void
-  onCreateRoom: () => void
-  copyState: CopyState
-  inviteLink: string
-  onCopyInviteLink: () => void
 }
 
 type RankedPlayer = {
@@ -124,75 +125,55 @@ function rankPlayers(players: PlayerDto[]): RankedPlayer[] {
   })
 }
 
-function calculateRemainingSeconds(gameplayView: GameplayViewDto | null): number | null {
-  const room = gameplayView?.room
-  const currentTurn = room?.currentTurn
-
-  if (!room || !currentTurn) {
-    return null
-  }
-
-  if (room.phase === 'paused') {
-    return currentTurn.remainingSecondsWhenPaused ?? gameplayView.remainingTurnSeconds ?? null
-  }
-
-  if (room.phase !== 'inProgress') {
-    return gameplayView.remainingTurnSeconds ?? null
-  }
-
-  const endsAtMilliseconds = Date.parse(currentTurn.endsAtUtc)
-  if (Number.isNaN(endsAtMilliseconds)) {
-    return gameplayView.remainingTurnSeconds ?? null
-  }
-
-  return Math.max(0, Math.ceil((endsAtMilliseconds - Date.now()) / 1000))
-}
-
 export function GameplayPage({
-  session,
   gameplayView,
-  syncError,
-  realtimeSyncState,
-  isRefreshing,
-  isStartingTurn,
-  isConfirmingGuess,
-  isEndingTurn,
-  isPausingGame,
-  isResumingGame,
-  isContinuingRound,
+  pending,
   actionError,
-  onStartTurn,
-  onConfirmGuess,
-  onEndTurn,
-  onPauseGame,
-  onResumeGame,
-  onContinueRound,
+  actions,
   onGoHome,
-  onCreateRoom,
-  copyState,
-  inviteLink,
-  onCopyInviteLink,
 }: GameplayPageProps) {
   const { t } = useTranslation()
-  const room = session?.room ?? null
-  const currentPlayerId = session?.currentPlayerId ?? ''
-  const [, setTimerTick] = useState(0)
+  const {
+    room,
+    currentPlayerId,
+    inviteLink,
+    copyState,
+    onCopyInviteLink,
+    realtimeSyncState,
+    syncError,
+    isRefreshing,
+    onCreateRoom,
+  } = useRoomSessionContext()
+
+  const {
+    isStartingTurn,
+    isConfirmingGuess,
+    isEndingTurn,
+    isPausingGame,
+    isResumingGame,
+    isContinuingRound,
+  } = pending
+
+  const {
+    onStartTurn,
+    onConfirmGuess,
+    onEndTurn,
+    onPauseGame,
+    onResumeGame,
+    onContinueRound,
+  } = actions
   const [detailTab, setDetailTab] = useState<GameplayDetailTab>('details')
   const [isSecondaryPanelOpen, setIsSecondaryPanelOpen] = useState(false)
 
-  useEffect(() => {
-    if (gameplayView?.room.phase !== 'inProgress' || !gameplayView.room.currentTurn) {
-      return undefined
-    }
+  const currentTurnForTimer = gameplayView?.room.currentTurn ?? null
+  const isPaused = gameplayView?.room.phase === 'paused'
+  const liveRemainingSeconds = useCountdownTimer(
+    currentTurnForTimer?.endsAtUtc,
+    isPaused,
+    currentTurnForTimer?.remainingSecondsWhenPaused ?? gameplayView?.remainingTurnSeconds,
+  )
 
-    const intervalId = window.setInterval(() => {
-      setTimerTick((currentValue) => currentValue + 1)
-    }, 1000)
-
-    return () => window.clearInterval(intervalId)
-  }, [gameplayView])
-
-  const liveRemainingSeconds = calculateRemainingSeconds(gameplayView)
+  const rankedPlayers = useMemo(() => rankPlayers(room?.players ?? []), [room?.players])
 
   if (!room) {
     return (
@@ -218,7 +199,6 @@ export function GameplayPage({
   const isCurrentPlayerExplainer = Boolean(gameplayView?.isCurrentPlayerExplainer)
   const isCurrentPlayerGuesser = Boolean(gameplayView?.isCurrentPlayerGuesser)
   const isCurrentPlayerObserver = !isCurrentPlayerExplainer && !isCurrentPlayerGuesser
-  const rankedPlayers = rankPlayers(room.players)
   const summaryRoundNumber = room.phase === 'roundSummary' || room.phase === 'completed' ? room.currentRoundNumber : null
   const upcomingRuleCopy = getUpcomingRuleCopy(summaryRoundNumber, t)
   const activePlayers = room.players.filter((player) => player.isActive)

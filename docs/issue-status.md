@@ -66,6 +66,15 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 - [ ] Issue 34 — Add basic telemetry/logging for room lifecycle and gameplay failures
 - [ ] Issue 35 — Create manual QA checklist for MVP gameplay flows
 
+## Epic 9: Frontend architecture refactoring
+- [x] Issue 36 — Quick wins: error boundary, countdown timer hook, memoization, and bug fixes
+- [x] Issue 37 — Extract custom hooks from App.tsx to reduce god-component complexity
+- [x] Issue 38 — Introduce RoomSessionContext to eliminate prop drilling
+- [ ] Issue 39 — Extract realtime connection and gameplay sync into dedicated hooks
+- [ ] Issue 40 — Decompose GameplayPage into phase-specific stage components
+- [ ] Issue 41 — Decompose LobbyPage into focused sub-components
+- [ ] Issue 42 — Add frontend component tests
+
 ---
 
 ## Optional notes
@@ -106,3 +115,10 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 33 | Not started |  |  |
 | 34 | Not started |  |  |
 | 35 | Not started |  |  |
+| 36 | Done | Added `ErrorBoundary` at app root, extracted `useCountdownTimer` hook, memoized `rankPlayers`, added clipboard auto-reset, stable keys in `WordSubmissionPanel`, and `AbortController` in gameplay refresh. |  |
+| 37 | Done | Extracted `useRouter`, `useRoomSession`, `useClipboard`, and `useGameplayAction` hooks. App.tsx reduced from 988 to 727 lines. Seven copy-paste action handlers replaced by generic dispatcher. |  |
+| 38 | Done | Created `RoomSessionContext` providing room snapshot, player ID, invite/clipboard state, sync state, and shared navigation. `GameplayPage` props dropped from 23 to 5, `LobbyPage` from 16 to 7, `WordSubmissionPanel` from 3 to 0. |  |
+| 39 | Not started |  |  |
+| 40 | Not started |  |  |
+| 41 | Not started |  |  |
+| 42 | Not started |  |  |

@@ -1,44 +1,49 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { RoomSnapshotDto } from '../contracts/theHatContracts'
 import { getFirstProblemMessage } from '../localization'
+import { useRoomSessionContext } from '../hooks/useRoomSessionContext'
 import { getPlayerWords, RoomServiceError, submitWords } from '../services/roomsService'
 import './WordSubmissionPanel.css'
 
-type WordSubmissionPanelProps = {
-  room: RoomSnapshotDto
-  currentPlayerId: string
-  onRoomUpdated: (room: RoomSnapshotDto) => void
+type DraftWord = {
+  id: string
+  text: string
 }
 
-function buildInitialDraft(words: string[], requiredCount: number): string[] {
+function createDraftWord(text: string = ''): DraftWord {
+  return { id: crypto.randomUUID(), text }
+}
+
+function buildInitialDraft(words: string[], requiredCount: number): DraftWord[] {
   if (words.length > 0) {
-    return [...words]
+    return words.map((word) => createDraftWord(word))
   }
 
-  return Array.from({ length: Math.max(requiredCount, 1) }, () => '')
+  return Array.from({ length: Math.max(requiredCount, 1) }, () => createDraftWord())
 }
 
-export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: WordSubmissionPanelProps) {
+export function WordSubmissionPanel() {
   const { t } = useTranslation()
+  const { room, currentPlayerId, updateRoomSessionSnapshot: onRoomUpdated } = useRoomSessionContext()
   const [savedWords, setSavedWords] = useState<string[]>([])
-  const [draftWords, setDraftWords] = useState<string[]>(() => buildInitialDraft([], room.settings.wordsPerPlayer))
-  const [requiredCount, setRequiredCount] = useState(room.settings.wordsPerPlayer)
+  const [draftWords, setDraftWords] = useState<DraftWord[]>(() => buildInitialDraft([], room?.settings.wordsPerPlayer ?? 5))
+  const [requiredCount, setRequiredCount] = useState(room?.settings.wordsPerPlayer ?? 5)
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [submitSuccess, setSubmitSuccess] = useState('')
   const [isSaving, setIsSaving] = useState(false)
-  const currentPlayer = room.players.find((player) => player.playerId === currentPlayerId) ?? null
+  const currentPlayer = room?.players.find((player) => player.playerId === currentPlayerId) ?? null
   const hasCurrentPlayer = currentPlayer !== null
   const currentPlayerIsActive = currentPlayer?.isActive ?? false
-  const canEditWords = room.phase === 'lobby' && currentPlayer?.isActive === true
+  const canEditWords = room?.phase === 'lobby' && currentPlayer?.isActive === true
 
   useEffect(() => {
     let isDisposed = false
 
     const loadWords = async () => {
+      if (!room) return
       setIsLoading(true)
       setLoadError('')
       setSubmitError('')
@@ -54,6 +59,7 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
         setSavedWords(nextWords)
         setDraftWords(buildInitialDraft(nextWords, response.requiredCount))
         setRequiredCount(response.requiredCount)
+        // Note: setRequiredCount is fine since it is used outside this effect.
       } catch (error) {
         if (isDisposed) {
           return
@@ -71,7 +77,7 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
       }
     }
 
-    if (room.phase !== 'lobby') {
+    if (!room || room.phase !== 'lobby') {
       setIsLoading(false)
       setLoadError('')
       return () => {
@@ -102,26 +108,29 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
     return () => {
       isDisposed = true
     }
-  }, [room.phase, room.roomId, currentPlayerId, hasCurrentPlayer, currentPlayerIsActive, t])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- room?.phase and room?.roomId are the relevant reactive values
+  }, [room?.phase, room?.roomId, currentPlayerId, hasCurrentPlayer, currentPlayerIsActive, t])
 
   useEffect(() => {
+    if (!room) return
     setRequiredCount(room.settings.wordsPerPlayer)
     setDraftWords((current) => {
       if (current.length >= room.settings.wordsPerPlayer) {
         return current
       }
 
-      return [...current, ...Array.from({ length: room.settings.wordsPerPlayer - current.length }, () => '')]
+      return [...current, ...Array.from({ length: room.settings.wordsPerPlayer - current.length }, () => createDraftWord())]
     })
-  }, [room.settings.wordsPerPlayer])
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when wordsPerPlayer changes
+  }, [room?.settings.wordsPerPlayer])
 
   const filledCount = useMemo(
-    () => draftWords.filter((word) => word.trim().length > 0).length,
+    () => draftWords.filter((entry) => entry.text.trim().length > 0).length,
     [draftWords],
   )
   const remainingCount = requiredCount - filledCount
   const isDirty = useMemo(() => {
-    const normalizedDraft = draftWords.map((word) => word.trim())
+    const normalizedDraft = draftWords.map((entry) => entry.text.trim())
     const normalizedSaved = savedWords.map((word) => word.trim())
 
     return JSON.stringify(normalizedDraft) !== JSON.stringify(normalizedSaved)
@@ -129,13 +138,17 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
 
   const updateWordAtIndex = (index: number, event: ChangeEvent<HTMLInputElement>) => {
     const nextValue = event.target.value
-    setDraftWords((current) => current.map((word, currentIndex) => (currentIndex === index ? nextValue : word)))
+    setDraftWords((current) =>
+      current.map((entry, currentIndex) =>
+        currentIndex === index ? { ...entry, text: nextValue } : entry,
+      ),
+    )
     setSubmitError('')
     setSubmitSuccess('')
   }
 
   const addWordField = () => {
-    setDraftWords((current) => [...current, ''])
+    setDraftWords((current) => [...current, createDraftWord()])
     setSubmitError('')
     setSubmitSuccess('')
   }
@@ -165,7 +178,7 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
       return
     }
 
-    const normalizedWords = draftWords.map((word) => word.trim())
+    const normalizedWords = draftWords.map((entry) => entry.text.trim())
 
     if (normalizedWords.length !== requiredCount) {
       setSubmitError(t('wordSubmission.exactWordsRequired', { count: requiredCount }))
@@ -184,13 +197,13 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
     setSubmitSuccess('')
 
     try {
-      const updatedRoom = await submitWords(room.roomId, {
+      const updatedRoom = await submitWords(room!.roomId, {
         playerId: currentPlayerId,
         words: normalizedWords,
       })
 
       setSavedWords(normalizedWords)
-      setDraftWords([...normalizedWords])
+      setDraftWords(normalizedWords.map((word) => createDraftWord(word)))
       onRoomUpdated(updatedRoom)
       setSubmitSuccess(t('wordSubmission.savedSuccess'))
     } catch (error) {
@@ -204,7 +217,7 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
     }
   }
 
-  if (room.phase !== 'lobby') {
+  if (!room || room.phase !== 'lobby') {
     return null
   }
 
@@ -241,20 +254,20 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
 
       {isLoading ? <p className="status-note">{t('wordSubmission.loadingSavedWords')}</p> : null}
       {loadError ? <p className="banner banner-error compact-banner">{loadError}</p> : null}
-      {!isLoading && room.phase === 'lobby' && currentPlayer && !currentPlayer.isActive ? (
+      {!isLoading && room?.phase === 'lobby' && currentPlayer && !currentPlayer.isActive ? (
         <p className="status-note">{t('wordSubmission.reconnectingPlayer')}</p>
       ) : null}
 
       {!isLoading && !loadError ? (
         <>
           <div className="word-entry-list">
-            {draftWords.map((word, index) => (
-              <div key={`${index}-${draftWords.length}`} className="word-entry-row">
+            {draftWords.map((entry, index) => (
+              <div key={entry.id} className="word-entry-row">
                 <label className="form-field word-entry-field">
                   <span>{t('wordSubmission.wordLabel', { index: index + 1 })}</span>
                   <input
                     type="text"
-                    value={word}
+                    value={entry.text}
                     maxLength={80}
                     placeholder={t('wordSubmission.wordPlaceholder')}
                     disabled={!canEditWords || isSaving}

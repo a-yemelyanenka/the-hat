@@ -1,31 +1,22 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { LobbySettingsFormState, RealtimeSyncState, RoomSessionState } from '../appModels'
-import type { CopyState } from '../appModels'
+import type { LobbySettingsFormState } from '../appModels'
 import type { PlayerDto, RoomSnapshotDto } from '../contracts/theHatContracts'
+import { useRoomSessionContext } from '../hooks/useRoomSessionContext'
 import { translateLocalizedMessage } from '../localization'
 import { WordSubmissionPanel } from './WordSubmissionPanel'
 import './CreateRoomPage.css'
 import './LobbyPage.css'
 
 type LobbyPageProps = {
-  session: RoomSessionState | null
-  inviteLink: string
-  copyState: CopyState
-  syncError: string
-  isRefreshing: boolean
-  realtimeSyncState: RealtimeSyncState
   isSavingSettings: boolean
   settingsError: string
   settingsSuccess: string
   isStartingGame: boolean
   startError: string
-  onCopyInviteLink: () => void
-  onCreateRoom: () => void
   onSaveSettings: (settings: LobbySettingsFormState, orderedPlayerIds?: string[]) => Promise<boolean>
   onStartGame: () => Promise<void>
-  onRoomUpdated: (room: RoomSnapshotDto) => void
 }
 
 function buildSettingsForm(room: RoomSnapshotDto): LobbySettingsFormState {
@@ -41,26 +32,26 @@ function getOrderedPlayerIds(players: PlayerDto[]): string[] {
 }
 
 export function LobbyPage({
-  session,
-  inviteLink,
-  copyState,
-  syncError,
-  isRefreshing,
-  realtimeSyncState,
   isSavingSettings,
   settingsError,
   settingsSuccess,
   isStartingGame,
   startError,
-  onCopyInviteLink,
-  onCreateRoom,
   onSaveSettings,
   onStartGame,
-  onRoomUpdated,
 }: LobbyPageProps) {
   const { t } = useTranslation()
-  const room = session?.room ?? null
-  const currentPlayerId = session?.currentPlayerId ?? ''
+  const {
+    room,
+    currentPlayerId,
+    inviteLink,
+    copyState,
+    onCopyInviteLink,
+    realtimeSyncState,
+    syncError,
+    isRefreshing,
+    onCreateRoom,
+  } = useRoomSessionContext()
   const currentPlayer = room?.players.find((player) => player.playerId === currentPlayerId) ?? null
   const hostPlayer = room?.players.find((player) => player.playerId === room.hostPlayerId) ?? null
   const isHost = Boolean(room && currentPlayerId === room.hostPlayerId)
@@ -279,7 +270,7 @@ export function LobbyPage({
           </ul>
         </article>
 
-        <WordSubmissionPanel room={room} currentPlayerId={currentPlayerId} onRoomUpdated={onRoomUpdated} />
+        <WordSubmissionPanel />
 
         <article className="panel settings-panel">
           <h2>{isHost ? t('lobby.lobbySettings') : t('lobby.currentSettings')}</h2>

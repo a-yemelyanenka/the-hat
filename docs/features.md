@@ -575,6 +575,128 @@ Document a manual test checklist covering the critical gameplay and lobby flows.
 
 ---
 
+# Epic 9: Frontend architecture refactoring
+
+## Issue 36 — Quick wins: error boundary, countdown timer hook, memoization, and bug fixes
+**Labels:** `frontend`, `enhancement`, `priority:high`, `milestone:mvp-polish`
+
+**Description**
+Address immediate performance issues, small bugs, and missing error resilience in the React frontend without changing overall component architecture.
+
+**Acceptance criteria**
+- An `ErrorBoundary` component wraps the app root and each page, preventing full-app crashes on render errors.
+- A `useCountdownTimer(endsAtUtc, isPaused)` hook is extracted and used in `GameplayPage` so that the 1-second timer tick only re-renders the timer display, not the entire 700-line component.
+- `rankPlayers()` result is memoized with `useMemo` in `GameplayPage`.
+- Clipboard copy state auto-resets to `'idle'` after a short timeout (e.g. 2 seconds).
+- `WordSubmissionPanel` uses stable keys (e.g. `crypto.randomUUID()` per draft entry) instead of index-based keys.
+- The gameplay refresh `useEffect` uses an `AbortController` in its cleanup to cancel in-flight fetches.
+
+**Notes**
+No structural changes to component hierarchy or state management. Each fix is independently verifiable. This is the lowest-risk phase and should be completed first.
+
+---
+
+## Issue 37 — Extract custom hooks from App.tsx to reduce god-component complexity
+**Labels:** `frontend`, `enhancement`, `priority:high`, `milestone:mvp-polish`
+
+**Description**
+Extract focused custom hooks from `App.tsx` (~980 lines) to separate routing, session persistence, and gameplay action dispatch from the component render logic.
+
+**Acceptance criteria**
+- A `useRouter` hook encapsulates `pushState`/`popstate` routing, `route` state, and `navigate()`.
+- A `useRoomSession` hook encapsulates `roomSession` state, `sessionStorage` persistence, and `updateRoomSessionSnapshot`.
+- A `useGameplayAction` generic hook replaces the 7 nearly-identical gameplay action handlers (`handleStartTurn`, `handleConfirmGuess`, `handleEndTurn`, `handlePauseGame`, `handleResumeGame`, `handleContinueRound`, `handleStartGame`).
+- A `useClipboard` hook encapsulates copy-to-clipboard with auto-reset (if not already done in Issue 36).
+- `App.tsx` drops below ~400 lines with no UI changes.
+- All existing gameplay flows continue to work identically.
+
+**Depends on:** Issue 36
+
+---
+
+## Issue 38 — Introduce RoomSessionContext to eliminate prop drilling
+**Labels:** `frontend`, `enhancement`, `priority:medium`, `milestone:mvp-polish`
+
+**Description**
+Create a React context that provides room session state (current room snapshot, current player ID) to descendant components, removing the need to thread session-related props through multiple levels.
+
+**Acceptance criteria**
+- A `RoomSessionContext` is created with a provider wrapping the app.
+- `LobbyPage`, `GameplayPage`, and `WordSubmissionPanel` consume session data from context instead of props.
+- Props on `GameplayPage` drop from ~23 to ~12 or fewer.
+- Props on `LobbyPage` drop from ~17 to ~10 or fewer.
+- No UI changes.
+
+**Depends on:** Issue 37
+
+---
+
+## Issue 39 — Extract realtime connection and gameplay sync into dedicated hooks
+**Labels:** `frontend`, `realtime`, `enhancement`, `priority:medium`, `milestone:mvp-polish`
+
+**Description**
+Move the ~100-line SignalR realtime connection lifecycle and gameplay view fetching/turn-expiry scheduling out of `App.tsx` into focused, independently testable hooks.
+
+**Acceptance criteria**
+- A `useRoomRealtime` hook manages SignalR connection, reconnection, fallback polling, and event callbacks.
+- A `useGameplaySync` hook manages gameplay view fetching, turn-expiry timeout scheduling, and refresh state.
+- `App.tsx` drops to ~100 lines and serves as a thin route coordinator.
+- Reconnection and fallback-to-polling behavior is preserved.
+- Each hook is independently testable.
+
+**Depends on:** Issue 38
+
+---
+
+## Issue 40 — Decompose GameplayPage into phase-specific stage components
+**Labels:** `frontend`, `ux`, `enhancement`, `priority:medium`, `milestone:mvp-polish`
+
+**Description**
+Break the 716-line `GameplayPage` into focused sub-components for each game phase and player role, plus extracted panels for scoreboard and details.
+
+**Acceptance criteria**
+- Separate components exist for: `ExplainerStage`, `GuesserStage`, `ObserverStage`, `RoundSummaryStage`, `GameCompleteStage`, `AwaitingTurnStage`.
+- `ScoreboardPanel` and `GameDetailsPanel` are extracted into their own files.
+- `GameplayPage` becomes a ~80-line coordinator that selects the appropriate stage component.
+- Each stage component is under ~100 lines.
+- No visual or behavioral changes.
+
+**Depends on:** Issue 39
+
+---
+
+## Issue 41 — Decompose LobbyPage into focused sub-components
+**Labels:** `frontend`, `ux`, `enhancement`, `priority:low`, `milestone:mvp-polish`
+
+**Description**
+Extract the distinct sections of `LobbyPage` into dedicated components for better maintainability.
+
+**Acceptance criteria**
+- Separate components exist for: `LobbySettingsForm`, `PlayerList` (with reorder controls), `InvitePanel`, `ReadinessPanel`.
+- `LobbyPage` becomes a thin coordinator.
+- No visual or behavioral changes.
+
+**Depends on:** Issue 38
+
+---
+
+## Issue 42 — Add frontend component tests
+**Labels:** `frontend`, `testing`, `priority:medium`, `milestone:mvp-polish`
+
+**Description**
+Introduce a frontend test setup and add component-level tests for the extracted hooks and key UI components.
+
+**Acceptance criteria**
+- Vitest and React Testing Library are configured in the frontend project.
+- Tests cover: `useCountdownTimer`, `useRouter`, `useRoomSession`, `useGameplayAction`, `useClipboard`.
+- At least one integration-style test exists for `CreateRoomPage` and `JoinRoomPage` form submission flows.
+- Tests run in CI alongside backend tests.
+- Focus management on route change is verified for accessibility.
+
+**Depends on:** Issue 40
+
+---
+
 # Suggested implementation order
 1. Issue 1
 2. Issue 3
@@ -610,6 +732,13 @@ Document a manual test checklist covering the critical gameplay and lobby flows.
 32. Issue 35
 33. Issue 2
 34. Issue 7
+35. Issue 36
+36. Issue 37
+37. Issue 38
+38. Issue 39
+39. Issue 40
+40. Issue 41
+41. Issue 42
 
 ---
 
