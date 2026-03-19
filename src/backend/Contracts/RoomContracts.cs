@@ -105,7 +105,13 @@ public sealed record SubmitWordsRequestDto(
 public sealed record StartGameRequestDto(
     string HostPlayerId);
 
+public sealed record StartTurnRequestDto(
+    string PlayerId);
+
 public sealed record ConfirmGuessRequestDto(
+    string PlayerId);
+
+public sealed record EndTurnRequestDto(
     string PlayerId);
 
 public sealed record PauseGameRequestDto(

@@ -17,4 +17,17 @@ public sealed class RoomConnectionTracker : IRoomConnectionTracker
             ? registration
             : null;
     }
+
+    public IReadOnlyList<RoomConnectionRegistration> GetRoomConnections(string roomId)
+    {
+        var normalizedRoomId = roomId?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedRoomId))
+        {
+            return [];
+        }
+
+        return _connections.Values
+            .Where(registration => string.Equals(registration.RoomId, normalizedRoomId, StringComparison.Ordinal))
+            .ToList();
+    }
 }

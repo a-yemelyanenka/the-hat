@@ -1,10 +1,11 @@
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr'
 import type { HubConnection } from '@microsoft/signalr'
-import type { RoomSnapshotDto } from '../contracts/theHatContracts'
+import type { GameplayViewDto, RoomSnapshotDto } from '../contracts/theHatContracts'
 import { RoomServiceError } from './roomsService'
 
 const ROOM_HUB_PATH = '/hubs/rooms'
 const ROOM_UPDATED_EVENT = 'roomUpdated'
+const GAMEPLAY_UPDATED_EVENT = 'gameplayUpdated'
 const SUBSCRIBE_METHOD = 'SubscribeToRoom'
 const UNSUBSCRIBE_METHOD = 'UnsubscribeFromRoom'
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')
@@ -17,6 +18,7 @@ type CreateRoomRealtimeConnectionOptions = {
   roomId: string
   playerId?: string
   onRoomUpdated: (room: RoomSnapshotDto) => void
+  onGameplayUpdated: (gameplayView: GameplayViewDto) => void
   onReconnecting: () => void
   onReconnected: () => void
   onClosed: () => void
@@ -35,6 +37,10 @@ export async function createRoomRealtimeConnection(
 
   connection.on(ROOM_UPDATED_EVENT, (room: RoomSnapshotDto) => {
     options.onRoomUpdated(room)
+  })
+
+  connection.on(GAMEPLAY_UPDATED_EVENT, (gameplayView: GameplayViewDto) => {
+    options.onGameplayUpdated(gameplayView)
   })
 
   connection.onreconnecting(() => {

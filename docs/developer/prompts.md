@@ -644,3 +644,23 @@ Model used for this conversation: GPT-5.4
 > </attachment>
 > Follow instructions in [implement-issues.prompt.md](file:///d%3A/Repos/the-hat/.github/prompts/implement-issues.prompt.md).
 > 18, 27-29
+
+## Prompt 48
+**Model:** GPT-5.4
+
+> Implement a new functionality
+>
+> Before the next turn, add intermidiate state, showing who will be the next explainer and guesses
+> and next explainer need to click start
+
+## Prompt 49
+**Model:** GPT-5.4
+
+> Try Again
+
+## Prompt 50
+**Model:** GPT-5.4
+
+> a bug:
+>
+> When the timer ends, nothing happens but the turn should be finished

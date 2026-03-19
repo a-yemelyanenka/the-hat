@@ -3,6 +3,7 @@ import type {
   ContinueRoundRequestDto,
   CreateRoomRequestDto,
   CreateRoomResponseDto,
+  EndTurnRequestDto,
   GameplayViewDto,
   JoinRoomRequestDto,
   PauseGameRequestDto,
@@ -11,6 +12,7 @@ import type {
   ResumeGameRequestDto,
   RoomSnapshotDto,
   StartGameRequestDto,
+  StartTurnRequestDto,
   SubmitWordsRequestDto,
   UpdateRoomSettingsRequestDto,
 } from '../contracts/theHatContracts'
@@ -124,6 +126,15 @@ export async function startGame(roomId: string, request: StartGameRequestDto): P
   })
 }
 
+export async function startTurn(roomId: string, request: StartTurnRequestDto): Promise<RoomSnapshotDto> {
+  return sendJsonRequest<RoomSnapshotDto>(getApiBaseUrl(), `/api/rooms/${encodeURIComponent(roomId)}/gameplay/start-turn`, {
+    method: 'POST',
+    body: request,
+    defaultErrorMessage: 'Starting the turn failed. Try again in a moment.',
+    notFoundMessage: 'This room no longer exists.',
+  })
+}
+
 export async function getGameplayView(roomId: string, playerId: string): Promise<GameplayViewDto> {
   return sendJsonRequest<GameplayViewDto>(
     getApiBaseUrl(),
@@ -144,6 +155,19 @@ export async function confirmGuess(roomId: string, request: ConfirmGuessRequestD
       method: 'POST',
       body: request,
       defaultErrorMessage: 'Confirming the guess failed. Try again in a moment.',
+      notFoundMessage: 'This room no longer exists.',
+    },
+  )
+}
+
+export async function endTurn(roomId: string, request: EndTurnRequestDto): Promise<RoomSnapshotDto> {
+  return sendJsonRequest<RoomSnapshotDto>(
+    getApiBaseUrl(),
+    `/api/rooms/${encodeURIComponent(roomId)}/gameplay/end-turn`,
+    {
+      method: 'POST',
+      body: request,
+      defaultErrorMessage: 'Ending the current turn failed. Try again in a moment.',
       notFoundMessage: 'This room no longer exists.',
     },
   )
@@ -195,6 +219,11 @@ type JsonRequestOptions = {
   notFoundMessage?: string
 }
 
+function isJsonResponse(contentType: string): boolean {
+  const normalizedContentType = contentType.toLowerCase()
+  return normalizedContentType.includes('application/json') || normalizedContentType.includes('+json')
+}
+
 async function sendJsonRequest<T>(apiBaseUrl: string, path: string, options: JsonRequestOptions): Promise<T> {
   let response: Response
 
@@ -213,7 +242,7 @@ async function sendJsonRequest<T>(apiBaseUrl: string, path: string, options: Jso
   }
 
   const contentType = response.headers.get('content-type') ?? ''
-  const hasJsonBody = contentType.includes('application/json')
+  const hasJsonBody = isJsonResponse(contentType)
   const responseBody = hasJsonBody ? ((await response.json()) as unknown) : null
 
   if (!response.ok) {

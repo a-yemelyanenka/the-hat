@@ -89,6 +89,10 @@
   gap: 1rem;
 }
 
+.gameplay-next-turn-card {
+  max-width: 30rem;
+}
+
 .gameplay-rule-title,
 .active-word {
   color: var(--text-h);

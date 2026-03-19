@@ -10,6 +10,41 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
         return room.Players.FirstOrDefault(player => player.NormalizedDisplayName == normalizedName);
     }
 
+    public PlayerGameplayState CreateGameplayState(RoomState room, string playerId, DateTime? nowUtc = null)
+    {
+        ArgumentNullException.ThrowIfNull(room);
+
+        var normalizedPlayerId = playerId?.Trim();
+        if (string.IsNullOrWhiteSpace(normalizedPlayerId)
+            || room.Players.All(player => !string.Equals(player.Id, normalizedPlayerId, StringComparison.Ordinal)))
+        {
+            throw new DomainValidationException(new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                [nameof(playerId)] = ["A valid player identifier is required to load gameplay."],
+            });
+        }
+
+        var currentTurn = room.CurrentTurn;
+        var isCurrentPlayerExplainer = string.Equals(currentTurn?.ExplainerPlayerId, normalizedPlayerId, StringComparison.Ordinal);
+        var isCurrentPlayerGuesser = string.Equals(currentTurn?.GuesserPlayerId, normalizedPlayerId, StringComparison.Ordinal);
+        var activeWordText = room.Phase == RoomPhase.InProgress
+            && isCurrentPlayerExplainer
+            && !string.IsNullOrWhiteSpace(currentTurn?.ActiveWordId)
+            ? room.Words.Single(word => word.Id == currentTurn.ActiveWordId).Text
+            : null;
+
+        return new PlayerGameplayState
+        {
+            Room = room,
+            PlayerId = normalizedPlayerId,
+            CurrentRule = room.TryGetCurrentRound()?.Rule,
+            ActiveWordText = activeWordText,
+            RemainingTurnSeconds = GetRemainingTurnSeconds(room, nowUtc),
+            IsCurrentPlayerExplainer = isCurrentPlayerExplainer,
+            IsCurrentPlayerGuesser = isCurrentPlayerGuesser,
+        };
+    }
+
     public bool ReactivatePlayer(RoomState room, string playerId, DateTime? nowUtc = null)
     {
         ArgumentNullException.ThrowIfNull(room);
@@ -34,7 +69,6 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
         {
             room.Phase = RoomPhase.InProgress;
             StartNextTurn(room, timestamp);
-            PauseGame(room, timestamp);
         }
 
         return true;
@@ -55,12 +89,22 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
         player.IsActive = false;
         var timestamp = nowUtc ?? DateTime.UtcNow;
 
-        if ((room.Phase == RoomPhase.InProgress || room.Phase == RoomPhase.Paused)
+        if (room.Phase == RoomPhase.AwaitingTurnStart
             && room.CurrentTurn is not null
             && (string.Equals(room.CurrentTurn.ExplainerPlayerId, playerId, StringComparison.Ordinal)
                 || string.Equals(room.CurrentTurn.GuesserPlayerId, playerId, StringComparison.Ordinal)))
         {
-            ResolveAffectedTurnAfterDisconnect(room, timestamp);
+            room.CurrentTurn = null;
+
+            if (room.Players.Count(existingPlayer => existingPlayer.IsActive) < 2)
+            {
+                room.Phase = RoomPhase.Paused;
+                room.UpdatedAtUtc = timestamp;
+                return true;
+            }
+
+            StartNextTurn(room, timestamp);
+            return true;
         }
 
         room.UpdatedAtUtc = timestamp;
@@ -82,7 +126,6 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
         }
 
         var timestamp = nowUtc ?? DateTime.UtcNow;
-        room.Phase = RoomPhase.InProgress;
         room.Rounds.Clear();
         room.CurrentRoundNumber = null;
         room.LastCompletedExplainerPlayerId = null;
@@ -97,6 +140,36 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
         room.UpdatedAtUtc = timestamp;
 
         BeginRound(room, 1, seed, timestamp);
+    }
+
+    public void StartTurn(RoomState room, DateTime? nowUtc = null)
+    {
+        ArgumentNullException.ThrowIfNull(room);
+
+        if (room.Phase != RoomPhase.AwaitingTurnStart)
+        {
+            throw new InvalidOperationException("The room is not waiting for the next explainer to start the turn.");
+        }
+
+        var round = GetCurrentRound(room);
+        if (round.RemainingWordIds.Count == 0)
+        {
+            throw new InvalidOperationException("A turn cannot be started because the current round has no remaining words.");
+        }
+
+        var turn = GetCurrentTurn(room);
+        var timestamp = nowUtc ?? DateTime.UtcNow;
+
+        turn.StartedAtUtc = timestamp;
+        turn.EndsAtUtc = timestamp.AddSeconds(turn.DurationSeconds);
+        turn.PausedAtUtc = null;
+        turn.RemainingSecondsWhenPaused = null;
+        turn.ExpiredAtUtc = null;
+        turn.CompletedAtUtc = null;
+        turn.ActiveWordId = DrawNextWordId(round);
+
+        room.Phase = RoomPhase.InProgress;
+        room.UpdatedAtUtc = timestamp;
     }
 
     public bool AdvanceState(RoomState room, DateTime? nowUtc = null)
@@ -166,28 +239,22 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
         turn.ActiveWordId = DrawNextWordId(round);
     }
 
+    public void EndTurn(RoomState room, DateTime? nowUtc = null)
+    {
+        ArgumentNullException.ThrowIfNull(room);
+
+        var timestamp = nowUtc ?? DateTime.UtcNow;
+        EnsureActiveGameplay(room, "The current turn can only be ended during active gameplay.");
+        CompleteCurrentTurnAndAdvance(room, timestamp, markExpired: false);
+    }
+
     public void ExpireTurn(RoomState room, DateTime? nowUtc = null)
     {
         ArgumentNullException.ThrowIfNull(room);
 
         var timestamp = nowUtc ?? DateTime.UtcNow;
         EnsureActiveGameplay(room, "Turns can only expire during active gameplay.");
-        var round = GetCurrentRound(room);
-        var turn = GetCurrentTurn(room);
-
-        if (!string.IsNullOrWhiteSpace(turn.ActiveWordId))
-        {
-            round.RemainingWordIds.Insert(0, turn.ActiveWordId);
-            turn.ActiveWordId = null;
-        }
-
-        turn.ExpiredAtUtc = timestamp;
-        turn.CompletedAtUtc = timestamp;
-        room.LastCompletedExplainerPlayerId = turn.ExplainerPlayerId;
-        room.LastCompletedTurnNumber = turn.TurnNumber;
-        room.UpdatedAtUtc = timestamp;
-
-        StartNextTurn(room, timestamp);
+        CompleteCurrentTurnAndAdvance(room, timestamp, markExpired: true);
     }
 
     public void PauseGame(RoomState room, DateTime? nowUtc = null)
@@ -253,9 +320,10 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
     {
         ArgumentNullException.ThrowIfNull(room);
 
-        if (room.Phase != RoomPhase.InProgress)
+        if (room.Phase != RoomPhase.InProgress
+            && room.Phase != RoomPhase.AwaitingTurnStart)
         {
-            throw new InvalidOperationException("Turns can only be started while the game is in progress.");
+            throw new InvalidOperationException("Turns can only be prepared while the game is active.");
         }
 
         var round = GetCurrentRound(room);
@@ -290,11 +358,10 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
             GuesserPlayerId = nextGuesserId,
             DurationSeconds = room.Settings.TurnDurationSeconds,
             StartedAtUtc = timestamp,
-            EndsAtUtc = timestamp.AddSeconds(room.Settings.TurnDurationSeconds),
+            EndsAtUtc = timestamp,
         };
 
-        room.CurrentTurn.ActiveWordId = DrawNextWordId(round);
-
+        room.Phase = RoomPhase.AwaitingTurnStart;
         room.UpdatedAtUtc = timestamp;
     }
 
@@ -302,9 +369,12 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
     {
         ArgumentNullException.ThrowIfNull(room);
 
-        var orderedActivePlayers = room.Players
-            .Where(player => player.IsActive)
+        var orderedPlayers = room.Players
             .OrderBy(player => player.OrderIndex)
+            .ToList();
+
+        var orderedActivePlayers = orderedPlayers
+            .Where(player => player.IsActive)
             .ToList();
 
         if (orderedActivePlayers.Count == 0)
@@ -312,14 +382,22 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
             throw new InvalidOperationException("The room does not contain any active players.");
         }
 
-        var currentIndex = orderedActivePlayers.FindIndex(player => player.Id == currentPlayerId);
+        var currentIndex = orderedPlayers.FindIndex(player => player.Id == currentPlayerId);
         if (currentIndex < 0)
         {
-            throw new InvalidOperationException($"Active player '{currentPlayerId}' was not found in the room order.");
+            throw new InvalidOperationException($"Player '{currentPlayerId}' was not found in the room order.");
         }
 
-        var nextIndex = (currentIndex + 1) % orderedActivePlayers.Count;
-        return orderedActivePlayers[nextIndex].Id;
+        for (var offset = 1; offset <= orderedPlayers.Count; offset++)
+        {
+            var nextIndex = (currentIndex + offset) % orderedPlayers.Count;
+            if (orderedPlayers[nextIndex].IsActive)
+            {
+                return orderedPlayers[nextIndex].Id;
+            }
+        }
+
+        throw new InvalidOperationException("The room does not contain any active players.");
     }
 
     public int? GetRemainingTurnSeconds(RoomState room, DateTime? nowUtc = null)
@@ -327,6 +405,11 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
         ArgumentNullException.ThrowIfNull(room);
 
         if (room.CurrentTurn is null)
+        {
+            return null;
+        }
+
+        if (room.Phase == RoomPhase.AwaitingTurnStart)
         {
             return null;
         }
@@ -405,14 +488,10 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
     private static int CalculateRemainingTurnSeconds(TurnState turn, DateTime timestamp)
         => (int)Math.Ceiling((turn.EndsAtUtc - timestamp).TotalSeconds);
 
-    private void ResolveAffectedTurnAfterDisconnect(RoomState room, DateTime timestamp)
+    private void CompleteCurrentTurnAndAdvance(RoomState room, DateTime timestamp, bool markExpired)
     {
         var turn = GetCurrentTurn(room);
         var round = GetCurrentRound(room);
-        var wasPaused = room.Phase == RoomPhase.Paused;
-        var pausedRemainingSeconds = wasPaused
-            ? Math.Max(1, turn.RemainingSecondsWhenPaused ?? CalculateRemainingTurnSeconds(turn, timestamp))
-            : (int?)null;
 
         if (!string.IsNullOrWhiteSpace(turn.ActiveWordId))
         {
@@ -420,11 +499,12 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
             turn.ActiveWordId = null;
         }
 
-        turn.ExpiredAtUtc = timestamp;
+        turn.ExpiredAtUtc = markExpired ? timestamp : null;
         turn.CompletedAtUtc = timestamp;
         room.LastCompletedExplainerPlayerId = turn.ExplainerPlayerId;
         room.LastCompletedTurnNumber = turn.TurnNumber;
         room.CurrentTurn = null;
+        room.UpdatedAtUtc = timestamp;
 
         if (room.Players.Count(player => player.IsActive) < 2)
         {
@@ -432,20 +512,7 @@ public sealed class RoomEngine(IDisplayNameNormalizer displayNameNormalizer) : I
             return;
         }
 
-        room.Phase = RoomPhase.InProgress;
         StartNextTurn(room, timestamp);
-
-        if (!wasPaused)
-        {
-            return;
-        }
-
-        var nextTurn = GetCurrentTurn(room);
-        var remainingSeconds = pausedRemainingSeconds ?? nextTurn.DurationSeconds;
-        room.Phase = RoomPhase.Paused;
-        nextTurn.PausedAtUtc = timestamp;
-        nextTurn.RemainingSecondsWhenPaused = remainingSeconds;
-        nextTurn.EndsAtUtc = timestamp.AddSeconds(remainingSeconds);
     }
 
     private static string DrawNextWordId(RoundState round)

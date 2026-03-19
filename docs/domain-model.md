@@ -64,9 +64,9 @@ The backend now treats gameplay as an explicit state machine:
 - Ordered seating is stored on each player with `orderIndex`.
 - The explainer is the active turn owner.
 - The guesser is the next active player in cyclic order.
-- Inactive players remain in room history but are skipped when turn pairs are calculated.
-- SignalR room subscriptions now reactivate returning players by `playerId`, and disconnects mark them inactive again.
-- If the current explainer or guesser disconnects, the backend returns the active word to the hat and resolves the turn by rotating to the next eligible pair.
+- Inactive players remain in room history but are skipped when new turn pairs are calculated.
+- SignalR room subscriptions reactivate returning players by `playerId`, and disconnects mark them inactive again.
+- If the current explainer or guesser disconnects, the backend preserves the in-flight turn, keeps the active word assigned to that turn, and lets the explainer explicitly end the interrupted turn when needed.
 - If fewer than two active players remain, gameplay moves into a paused waiting state until another player reconnects.
 
 ### Rounds

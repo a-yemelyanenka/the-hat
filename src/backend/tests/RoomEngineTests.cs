@@ -33,7 +33,7 @@ public sealed class RoomEngineTests
     }
 
     [Fact]
-    public void StartGame_UsesConfiguredPlayerOrderAndDrawsFirstWord()
+    public void StartGame_PreparesFirstTurnAndWaitsForExplainerToStart()
     {
         var room = CreateRoom();
 
@@ -42,9 +42,24 @@ public sealed class RoomEngineTests
         Assert.NotNull(room.CurrentTurn);
         Assert.Equal("player-1", room.CurrentTurn!.ExplainerPlayerId);
         Assert.Equal("player-2", room.CurrentTurn.GuesserPlayerId);
-        Assert.NotNull(room.CurrentTurn.ActiveWordId);
-        Assert.Equal(RoomPhase.InProgress, room.Phase);
+        Assert.Null(room.CurrentTurn.ActiveWordId);
+        Assert.Equal(RoomPhase.AwaitingTurnStart, room.Phase);
         Assert.Equal(RoundRule.ExplainNoSynonyms, room.Rounds.Single().Rule);
+    }
+
+    [Fact]
+    public void StartTurn_DrawsFirstWordAndStartsTimer()
+    {
+        var room = CreateRoom();
+
+        _roomEngine.StartGame(room, seed: 7, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 4, DateTimeKind.Utc));
+
+        Assert.Equal(RoomPhase.InProgress, room.Phase);
+        Assert.NotNull(room.CurrentTurn);
+        Assert.NotNull(room.CurrentTurn!.ActiveWordId);
+        Assert.Equal(new DateTime(2026, 3, 17, 12, 0, 4, DateTimeKind.Utc), room.CurrentTurn.StartedAtUtc);
+        Assert.Equal(new DateTime(2026, 3, 17, 12, 1, 4, DateTimeKind.Utc), room.CurrentTurn.EndsAtUtc);
     }
 
     [Fact]
@@ -52,6 +67,7 @@ public sealed class RoomEngineTests
     {
         var room = CreateRoom();
         _roomEngine.StartGame(room, seed: 11, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
 
         var firstRound = room.Rounds.Single(round => round.RoundNumber == 1);
         var activeWordId = room.CurrentTurn!.ActiveWordId;
@@ -59,10 +75,15 @@ public sealed class RoomEngineTests
 
         _roomEngine.ExpireTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 30, DateTimeKind.Utc));
 
-        Assert.Equal(expectedRemainingCount, firstRound.RemainingWordIds.Count);
-        Assert.Equal(activeWordId, room.CurrentTurn!.ActiveWordId);
+        Assert.Equal(RoomPhase.AwaitingTurnStart, room.Phase);
+        Assert.Equal(expectedRemainingCount + 1, firstRound.RemainingWordIds.Count);
+        Assert.Null(room.CurrentTurn!.ActiveWordId);
         Assert.Equal("player-2", room.CurrentTurn!.ExplainerPlayerId);
         Assert.Equal("player-3", room.CurrentTurn.GuesserPlayerId);
+
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 31, DateTimeKind.Utc));
+
+        Assert.Equal(activeWordId, room.CurrentTurn!.ActiveWordId);
     }
 
     [Fact]
@@ -70,6 +91,7 @@ public sealed class RoomEngineTests
     {
         var room = CreateRoom();
         _roomEngine.StartGame(room, seed: 3, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
 
         var previousWordId = room.CurrentTurn!.ActiveWordId;
         _roomEngine.RecordCorrectGuess(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 5, DateTimeKind.Utc));
@@ -85,8 +107,9 @@ public sealed class RoomEngineTests
     {
         var room = CreateTwoPlayerRoomWithSingleWord();
         _roomEngine.StartGame(room, seed: 1, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
 
-        _roomEngine.RecordCorrectGuess(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
+        _roomEngine.RecordCorrectGuess(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 2, DateTimeKind.Utc));
 
         Assert.Equal(RoomPhase.RoundSummary, room.Phase);
         Assert.Null(room.CurrentTurn);
@@ -99,16 +122,17 @@ public sealed class RoomEngineTests
     {
         var room = CreateTwoPlayerRoomWithSingleWord();
         _roomEngine.StartGame(room, seed: 1, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
 
-        _roomEngine.RecordCorrectGuess(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
+        _roomEngine.RecordCorrectGuess(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 2, DateTimeKind.Utc));
         _roomEngine.ContinueToNextRound(room, seed: 2, nowUtc: new DateTime(2026, 3, 17, 12, 0, 2, DateTimeKind.Utc));
 
-        Assert.Equal(RoomPhase.InProgress, room.Phase);
+        Assert.Equal(RoomPhase.AwaitingTurnStart, room.Phase);
         Assert.Equal(2, room.CurrentRoundNumber);
         Assert.Equal(RoundRule.GesturesOnly, room.Rounds.Single(round => round.RoundNumber == 2).Rule);
         Assert.Equal("player-2", room.CurrentTurn!.ExplainerPlayerId);
         Assert.Equal("player-1", room.CurrentTurn.GuesserPlayerId);
-        Assert.NotNull(room.CurrentTurn.ActiveWordId);
+        Assert.Null(room.CurrentTurn.ActiveWordId);
     }
 
     [Fact]
@@ -119,7 +143,8 @@ public sealed class RoomEngineTests
 
         for (var roundNumber = 1; roundNumber <= 3; roundNumber++)
         {
-            _roomEngine.RecordCorrectGuess(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, roundNumber, DateTimeKind.Utc));
+            _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, roundNumber, DateTimeKind.Utc));
+            _roomEngine.RecordCorrectGuess(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, roundNumber + 1, DateTimeKind.Utc));
             if (roundNumber < 3)
             {
                 _roomEngine.ContinueToNextRound(room, seed: roundNumber + 10, nowUtc: new DateTime(2026, 3, 17, 12, 0, roundNumber + 10, DateTimeKind.Utc));
@@ -143,8 +168,11 @@ public sealed class RoomEngineTests
         Assert.Equal("player-1", room.CurrentTurn!.ExplainerPlayerId);
         Assert.Equal("player-3", room.CurrentTurn.GuesserPlayerId);
 
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
+
         _roomEngine.ExpireTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 30, DateTimeKind.Utc));
 
+        Assert.Equal(RoomPhase.AwaitingTurnStart, room.Phase);
         Assert.Equal("player-3", room.CurrentTurn!.ExplainerPlayerId);
         Assert.Equal("player-1", room.CurrentTurn.GuesserPlayerId);
     }
@@ -154,6 +182,7 @@ public sealed class RoomEngineTests
     {
         var room = CreateRoom();
         _roomEngine.StartGame(room, seed: 5, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
 
         _roomEngine.PauseGame(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 20, DateTimeKind.Utc));
 
@@ -167,11 +196,13 @@ public sealed class RoomEngineTests
     }
 
     [Fact]
-    public void DeactivatePlayer_RotatesAffectedTurnAndKeepsScores()
+    public void DeactivatePlayer_PreservesAffectedTurnAndKeepsScores()
     {
         var room = CreateRoom();
         _roomEngine.StartGame(room, seed: 5, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
         room.Players.Single(player => player.Id == "player-1").Score = 3;
+        var activeWordId = room.CurrentTurn!.ActiveWordId;
 
         var changed = _roomEngine.DeactivatePlayer(room, "player-2", new DateTime(2026, 3, 17, 12, 0, 15, DateTimeKind.Utc));
 
@@ -179,26 +210,50 @@ public sealed class RoomEngineTests
         Assert.False(room.Players.Single(player => player.Id == "player-2").IsActive);
         Assert.Equal(3, room.Players.Single(player => player.Id == "player-1").Score);
         Assert.Equal(RoomPhase.InProgress, room.Phase);
+        Assert.NotNull(room.CurrentTurn);
+        Assert.Equal("player-1", room.CurrentTurn!.ExplainerPlayerId);
+        Assert.Equal("player-2", room.CurrentTurn.GuesserPlayerId);
+        Assert.Equal(activeWordId, room.CurrentTurn.ActiveWordId);
+    }
+
+    [Fact]
+    public void EndTurn_AfterInterruptedTurnRotatesToNextEligiblePair()
+    {
+        var room = CreateRoom();
+        _roomEngine.StartGame(room, seed: 5, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
+
+        _roomEngine.DeactivatePlayer(room, "player-2", new DateTime(2026, 3, 17, 12, 0, 10, DateTimeKind.Utc));
+        _roomEngine.EndTurn(room, new DateTime(2026, 3, 17, 12, 0, 11, DateTimeKind.Utc));
+
+        Assert.Equal(RoomPhase.AwaitingTurnStart, room.Phase);
+        Assert.NotNull(room.CurrentTurn);
         Assert.Equal("player-3", room.CurrentTurn!.ExplainerPlayerId);
         Assert.Equal("player-1", room.CurrentTurn.GuesserPlayerId);
     }
 
     [Fact]
-    public void DeactivatePlayer_WithTooFewActivePlayers_PausesGameUntilSomeoneReturns()
+    public void EndTurn_WithTooFewActivePlayers_PausesGameUntilSomeoneReturns()
     {
         var room = CreateTwoPlayerRoomWithSingleWord();
         _roomEngine.StartGame(room, seed: 1, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
 
         var changed = _roomEngine.DeactivatePlayer(room, "player-2", new DateTime(2026, 3, 17, 12, 0, 10, DateTimeKind.Utc));
 
         Assert.True(changed);
+        Assert.Equal(RoomPhase.InProgress, room.Phase);
+        Assert.NotNull(room.CurrentTurn);
+
+        _roomEngine.EndTurn(room, new DateTime(2026, 3, 17, 12, 0, 11, DateTimeKind.Utc));
+
         Assert.Equal(RoomPhase.Paused, room.Phase);
         Assert.Null(room.CurrentTurn);
 
         var reactivated = _roomEngine.ReactivatePlayer(room, "player-2", new DateTime(2026, 3, 17, 12, 0, 20, DateTimeKind.Utc));
 
         Assert.True(reactivated);
-        Assert.Equal(RoomPhase.Paused, room.Phase);
+        Assert.Equal(RoomPhase.AwaitingTurnStart, room.Phase);
         Assert.NotNull(room.CurrentTurn);
         Assert.Equal("player-2", room.CurrentTurn!.ExplainerPlayerId);
         Assert.Equal("player-1", room.CurrentTurn.GuesserPlayerId);
@@ -209,10 +264,12 @@ public sealed class RoomEngineTests
     {
         var room = CreateRoom();
         _roomEngine.StartGame(room, seed: 5, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
 
-        var changed = _roomEngine.AdvanceState(room, nowUtc: new DateTime(2026, 3, 17, 12, 1, 0, DateTimeKind.Utc));
+        var changed = _roomEngine.AdvanceState(room, nowUtc: new DateTime(2026, 3, 17, 12, 1, 2, DateTimeKind.Utc));
 
         Assert.True(changed);
+        Assert.Equal(RoomPhase.AwaitingTurnStart, room.Phase);
         Assert.Equal("player-2", room.CurrentTurn!.ExplainerPlayerId);
     }
 
@@ -222,6 +279,7 @@ public sealed class RoomEngineTests
         var room = CreateRoom();
 
         _roomEngine.StartGame(room, seed: 5, nowUtc: new DateTime(2026, 3, 17, 12, 0, 0, DateTimeKind.Utc));
+        _roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 17, 12, 0, 1, DateTimeKind.Utc));
 
         Assert.Equal(4, room.Words.Count);
         Assert.Equal(2, room.Words.Count(word => word.Text == "banana"));

@@ -52,8 +52,7 @@ public sealed class RoomJoinService(
         var room = await GetRoomByInviteCodeAsync(inviteCode, cancellationToken);
         var player = ValidateRejoinRoom(room, displayName);
 
-        player.IsActive = true;
-        room.UpdatedAtUtc = DateTime.UtcNow;
+        roomEngine.ReactivatePlayer(room, player.Id, DateTime.UtcNow);
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return room;

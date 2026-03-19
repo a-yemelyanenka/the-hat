@@ -9,10 +9,11 @@ public enum PlayerOrderMode
 public enum RoomPhase
 {
     Lobby = 1,
-    InProgress = 2,
-    Paused = 3,
-    RoundSummary = 4,
-    Completed = 5,
+    AwaitingTurnStart = 2,
+    InProgress = 3,
+    Paused = 4,
+    RoundSummary = 5,
+    Completed = 6,
 }
 
 public enum RoundRule
@@ -96,7 +97,7 @@ public sealed record RoundState
 
     public bool IsCompleted { get; set; }
 
-    public DateTime StartedAtUtc { get; init; }
+    public DateTime StartedAtUtc { get; set; }
 
     public DateTime? CompletedAtUtc { get; set; }
 }
@@ -113,7 +114,7 @@ public sealed record TurnState
 
     public int DurationSeconds { get; init; }
 
-    public DateTime StartedAtUtc { get; init; }
+    public DateTime StartedAtUtc { get; set; }
 
     public DateTime EndsAtUtc { get; set; }
 

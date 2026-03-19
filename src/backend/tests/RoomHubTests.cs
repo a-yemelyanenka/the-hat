@@ -31,7 +31,7 @@ public sealed class RoomHubTests
         var presenceService = new RecordingRoomPresenceService();
         var notifier = new RecordingRealtimeNotifier();
         var tracker = new RoomConnectionTracker();
-        var hub = new RoomHub(new StubRoomLobbyService(room), presenceService, notifier, tracker)
+        var hub = new RoomHub(new StubRoomLobbyService(room), presenceService, notifier, tracker, new RoomEngine(new DisplayNameNormalizer()))
         {
             Clients = new StubHubCallerClients(clientProxy),
             Context = new StubHubCallerContext("connection-123"),
@@ -51,6 +51,32 @@ public sealed class RoomHubTests
         Assert.Equal(room.RoomId, payload.RoomId);
         Assert.Equal(room.InviteCode, payload.InviteCode);
         Assert.Single(payload.Players);
+    }
+
+    [Fact]
+    public async Task SubscribeToRoom_WithPlayerId_SendsGameplayViewToCaller()
+    {
+        var room = CreateStartedRoom();
+
+        var clientProxy = new RecordingClientProxy();
+        var hub = new RoomHub(
+            new StubRoomLobbyService(room),
+            new RecordingRoomPresenceService(),
+            new RecordingRealtimeNotifier(),
+            new RoomConnectionTracker(),
+            new RoomEngine(new DisplayNameNormalizer()))
+        {
+            Clients = new StubHubCallerClients(clientProxy),
+            Context = new StubHubCallerContext("connection-123"),
+            Groups = new RecordingGroupManager(),
+        };
+
+        await hub.SubscribeToRoom(room.RoomId, room.HostPlayerId);
+
+        var gameplayMessage = Assert.Single(clientProxy.Messages, message => message.MethodName == RoomHub.GameplayUpdatedMethodName);
+        var payload = Assert.IsType<GameplayViewDto>(Assert.Single(gameplayMessage.Arguments));
+        Assert.True(payload.IsCurrentPlayerExplainer);
+        Assert.False(string.IsNullOrWhiteSpace(payload.ActiveWord));
     }
 
     [Fact]
@@ -77,7 +103,7 @@ public sealed class RoomHubTests
         var tracker = new RoomConnectionTracker();
         tracker.TrackConnection("connection-123", room.RoomId, room.HostPlayerId);
 
-        var hub = new RoomHub(new StubRoomLobbyService(room), presenceService, new RecordingRealtimeNotifier(), tracker)
+        var hub = new RoomHub(new StubRoomLobbyService(room), presenceService, new RecordingRealtimeNotifier(), tracker, new RoomEngine(new DisplayNameNormalizer()))
         {
             Clients = new StubHubCallerClients(new RecordingClientProxy()),
             Context = new StubHubCallerContext("connection-123"),
@@ -89,6 +115,43 @@ public sealed class RoomHubTests
         var disconnectCall = Assert.Single(presenceService.DeactivateCalls);
         Assert.Equal(room.RoomId, disconnectCall.RoomId);
         Assert.Equal(room.HostPlayerId, disconnectCall.PlayerId);
+    }
+
+    [Fact]
+    public async Task OnDisconnectedAsync_DoesNotDeactivatePlayerWhenAnotherConnectionIsStillTracked()
+    {
+        var room = new RoomFactory(new DisplayNameNormalizer()).CreateRoom(
+            "Alice",
+            new RoomSettings
+            {
+                WordsPerPlayer = 4,
+                TurnDurationSeconds = 75,
+                PlayerOrderMode = PlayerOrderMode.Random,
+            },
+            nowUtc: new DateTime(2026, 3, 18, 10, 0, 0, DateTimeKind.Utc),
+            roomId: "room-123",
+            hostPlayerId: "player-host",
+            inviteCode: "ROOM1234");
+
+        var presenceService = new RecordingRoomPresenceService
+        {
+            RoomToReturn = room,
+        };
+
+        var tracker = new RoomConnectionTracker();
+        tracker.TrackConnection("connection-123", room.RoomId, room.HostPlayerId);
+        tracker.TrackConnection("connection-456", room.RoomId, room.HostPlayerId);
+
+        var hub = new RoomHub(new StubRoomLobbyService(room), presenceService, new RecordingRealtimeNotifier(), tracker, new RoomEngine(new DisplayNameNormalizer()))
+        {
+            Clients = new StubHubCallerClients(new RecordingClientProxy()),
+            Context = new StubHubCallerContext("connection-123"),
+            Groups = new RecordingGroupManager(),
+        };
+
+        await hub.OnDisconnectedAsync(null);
+
+        Assert.Empty(presenceService.DeactivateCalls);
     }
 
     private sealed class StubRoomLobbyService(RoomState room) : IRoomLobbyService
@@ -144,6 +207,44 @@ public sealed class RoomHubTests
             PublishedRooms.Add(room);
             return Task.CompletedTask;
         }
+    }
+
+    private static RoomState CreateStartedRoom()
+    {
+        var normalizer = new DisplayNameNormalizer();
+        var room = new RoomFactory(normalizer).CreateRoom(
+            "Alice",
+            new RoomSettings
+            {
+                WordsPerPlayer = 1,
+                TurnDurationSeconds = 60,
+                PlayerOrderMode = PlayerOrderMode.Manual,
+            },
+            nowUtc: new DateTime(2026, 3, 18, 10, 0, 0, DateTimeKind.Utc),
+            roomId: "room-live",
+            hostPlayerId: "player-host",
+            inviteCode: "LIVE1234");
+
+        room.Players.Add(new PlayerState
+        {
+            Id = "player-guest",
+            DisplayName = "Bob",
+            NormalizedDisplayName = normalizer.Normalize("Bob"),
+            IsActive = true,
+            OrderIndex = 1,
+        });
+
+        room.Words.Add(new WordEntry
+        {
+            Id = "word-1",
+            Text = "meteor",
+            SubmittedByPlayerId = room.HostPlayerId,
+        });
+
+        var roomEngine = new RoomEngine(normalizer);
+        roomEngine.StartGame(room, seed: 7, nowUtc: new DateTime(2026, 3, 18, 10, 0, 1, DateTimeKind.Utc));
+        roomEngine.StartTurn(room, nowUtc: new DateTime(2026, 3, 18, 10, 0, 2, DateTimeKind.Utc));
+        return room;
     }
 
     private sealed class RecordingGroupManager : IGroupManager

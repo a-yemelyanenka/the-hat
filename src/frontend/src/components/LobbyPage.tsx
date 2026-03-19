@@ -35,9 +35,7 @@ function buildSettingsForm(room: RoomSnapshotDto): LobbySettingsFormState {
 }
 
 function getOrderedPlayerIds(players: PlayerDto[]): string[] {
-  return [...players]
-    .sort((left, right) => left.orderIndex - right.orderIndex)
-    .map((player) => player.playerId)
+  return players.map((player) => player.playerId)
 }
 
 export function LobbyPage({

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import type { RealtimeSyncState, RoomSessionState } from '../appModels'
 import type { GameplayViewDto, PlayerDto, RoundRule } from '../contracts/theHatContracts'
 import type { CopyState } from '../appModels'
@@ -11,12 +12,16 @@ type GameplayPageProps = {
   syncError: string
   realtimeSyncState: RealtimeSyncState
   isRefreshing: boolean
+  isStartingTurn: boolean
   isConfirmingGuess: boolean
+  isEndingTurn: boolean
   isPausingGame: boolean
   isResumingGame: boolean
   isContinuingRound: boolean
   actionError: string
+  onStartTurn: () => Promise<void>
   onConfirmGuess: () => Promise<void>
+  onEndTurn: () => Promise<void>
   onPauseGame: () => Promise<void>
   onResumeGame: () => Promise<void>
   onContinueRound: () => Promise<void>
@@ -113,18 +118,46 @@ function rankPlayers(players: PlayerDto[]): RankedPlayer[] {
   })
 }
 
+function calculateRemainingSeconds(gameplayView: GameplayViewDto | null): number | null {
+  const room = gameplayView?.room
+  const currentTurn = room?.currentTurn
+
+  if (!room || !currentTurn) {
+    return null
+  }
+
+  if (room.phase === 'paused') {
+    return currentTurn.remainingSecondsWhenPaused ?? gameplayView.remainingTurnSeconds ?? null
+  }
+
+  if (room.phase !== 'inProgress') {
+    return gameplayView.remainingTurnSeconds ?? null
+  }
+
+  const endsAtMilliseconds = Date.parse(currentTurn.endsAtUtc)
+  if (Number.isNaN(endsAtMilliseconds)) {
+    return gameplayView.remainingTurnSeconds ?? null
+  }
+
+  return Math.max(0, Math.ceil((endsAtMilliseconds - Date.now()) / 1000))
+}
+
 export function GameplayPage({
   session,
   gameplayView,
   syncError,
   realtimeSyncState,
   isRefreshing,
+  isStartingTurn,
   isConfirmingGuess,
+  isEndingTurn,
   isPausingGame,
   isResumingGame,
   isContinuingRound,
   actionError,
+  onStartTurn,
   onConfirmGuess,
+  onEndTurn,
   onPauseGame,
   onResumeGame,
   onContinueRound,
@@ -135,6 +168,21 @@ export function GameplayPage({
 }: GameplayPageProps) {
   const room = session?.room ?? null
   const currentPlayerId = session?.currentPlayerId ?? ''
+  const [, setTimerTick] = useState(0)
+
+  useEffect(() => {
+    if (gameplayView?.room.phase !== 'inProgress' || !gameplayView.room.currentTurn) {
+      return undefined
+    }
+
+    const intervalId = window.setInterval(() => {
+      setTimerTick((currentValue) => currentValue + 1)
+    }, 1000)
+
+    return () => window.clearInterval(intervalId)
+  }, [gameplayView])
+
+  const liveRemainingSeconds = calculateRemainingSeconds(gameplayView)
 
   if (!room) {
     return (
@@ -161,11 +209,22 @@ export function GameplayPage({
   const summaryRoundNumber = room.phase === 'roundSummary' || room.phase === 'completed' ? room.currentRoundNumber : null
   const upcomingRuleCopy = getUpcomingRuleCopy(summaryRoundNumber)
   const activePlayers = room.players.filter((player) => player.isActive)
+  const interruptedTurnPlayers = currentTurn
+    ? room.players.filter(
+        (player) =>
+          (player.playerId === currentTurn.explainerPlayerId || player.playerId === currentTurn.guesserPlayerId) && !player.isActive,
+      )
+    : []
+  const isInterruptedTurn = interruptedTurnPlayers.length > 0
+  const canEndInterruptedTurn = room.phase === 'inProgress' && gameplayView?.isCurrentPlayerExplainer && isInterruptedTurn
   const waitingForReconnect = room.phase === 'paused' && !currentTurn && activePlayers.length < 2
   const explainerName = getPlayerName(room.players, currentTurn?.explainerPlayerId)
   const guesserName = getPlayerName(room.players, currentTurn?.guesserPlayerId)
+  const isAwaitingTurnStart = room.phase === 'awaitingTurnStart' && Boolean(currentTurn)
   const phaseLabel =
-    room.phase === 'inProgress'
+    room.phase === 'awaitingTurnStart'
+      ? 'Waiting for turn start'
+      : room.phase === 'inProgress'
       ? 'Turn in progress'
       : room.phase === 'paused'
         ? 'Game paused'
@@ -206,6 +265,10 @@ export function GameplayPage({
                 ? 'Final results are ready'
                 : room.phase === 'roundSummary'
                   ? `Round ${summaryRoundNumber ?? '—'} complete`
+                  : isAwaitingTurnStart
+                    ? gameplayView?.isCurrentPlayerExplainer
+                      ? 'You are up next'
+                      : `${explainerName} starts next`
                   : waitingForReconnect
                     ? 'Waiting for another player to reconnect'
                     : gameplayView?.isCurrentPlayerExplainer
@@ -219,6 +282,12 @@ export function GameplayPage({
                 ? 'Review the final ranking and start a fresh room when everyone is ready.'
                 : room.phase === 'roundSummary'
                   ? 'Scores are cumulative. The host can move everyone into the next round when ready.'
+                  : isAwaitingTurnStart
+                    ? gameplayView?.isCurrentPlayerExplainer
+                      ? `You will explain to ${guesserName}. Start when you are ready.`
+                      : `${explainerName} will explain and ${guesserName} will guess next.`
+                  : isInterruptedTurn
+                    ? `${interruptedTurnPlayers.map((player) => player.displayName).join(', ')} ${interruptedTurnPlayers.length === 1 ? 'is' : 'are'} temporarily inactive. The current turn stays in progress.`
                   : waitingForReconnect
                     ? 'Gameplay is paused because fewer than two active players remain in the room.'
                     : roundCopy?.description ?? 'Live turn details stay in sync for every player.'}
@@ -232,7 +301,7 @@ export function GameplayPage({
             </div>
             <div className="hero-stat">
               <span>Timer</span>
-              <strong>{gameplayView?.remainingTurnSeconds ?? '—'}s</strong>
+              <strong>{liveRemainingSeconds ?? '—'}s</strong>
             </div>
             <div className="hero-stat">
               <span>Active players</span>
@@ -287,7 +356,7 @@ export function GameplayPage({
                 </div>
                 <div>
                   <dt>Timer</dt>
-                  <dd>{gameplayView?.remainingTurnSeconds ?? '—'} seconds left</dd>
+                  <dd>{isAwaitingTurnStart ? 'Starts on click' : `${liveRemainingSeconds ?? '—'} seconds left`}</dd>
                 </div>
               </dl>
 
@@ -296,12 +365,18 @@ export function GameplayPage({
                   <span className="eyebrow">Explainer</span>
                   <strong>{explainerName}</strong>
                   <p>{gameplayView?.isCurrentPlayerExplainer ? 'You can see the word and confirm each correct guess.' : 'This player sees the active word.'}</p>
+                  {currentTurn && room.players.some((player) => player.playerId === currentTurn.explainerPlayerId && !player.isActive) ? (
+                    <span className="status-pill error">Inactive</span>
+                  ) : null}
                 </article>
 
                 <article className={`turn-role-card ${gameplayView?.isCurrentPlayerGuesser ? 'turn-role-card-active' : ''}`}>
                   <span className="eyebrow">Guesser</span>
                   <strong>{guesserName}</strong>
                   <p>{gameplayView?.isCurrentPlayerGuesser ? 'You are the guesser for this turn.' : 'This player is answering clues right now.'}</p>
+                  {currentTurn && room.players.some((player) => player.playerId === currentTurn.guesserPlayerId && !player.isActive) ? (
+                    <span className="status-pill error">Inactive</span>
+                  ) : null}
                 </article>
               </div>
             </>
@@ -316,11 +391,30 @@ export function GameplayPage({
 
         <article className="panel gameplay-panel gameplay-word-panel">
           <h2>Current word</h2>
-          {room.phase === 'inProgress' || room.phase === 'paused' ? (
+          {room.phase === 'awaitingTurnStart' ? (
+            <div className="round-transition-copy">
+              <p>The next turn is ready.</p>
+              <div className="transition-rule-card gameplay-next-turn-card">
+                <span className="eyebrow">Next turn</span>
+                <strong>
+                  {explainerName} explains · {guesserName} guesses
+                </strong>
+                <p>The explainer starts the timer manually when ready.</p>
+              </div>
+              {gameplayView?.isCurrentPlayerExplainer ? (
+                <button className="button button-primary" type="button" disabled={isStartingTurn} onClick={() => void onStartTurn()}>
+                  {isStartingTurn ? 'Starting turn…' : 'Start turn'}
+                </button>
+              ) : (
+                <p className="status-note">Waiting for {explainerName} to start the turn.</p>
+              )}
+            </div>
+          ) : room.phase === 'inProgress' || room.phase === 'paused' ? (
             gameplayView?.isCurrentPlayerExplainer ? (
               <>
                 <p className="active-word">{gameplayView.activeWord ?? 'Loading word…'}</p>
                 <p className="status-note">Only the explainer can see the active word.</p>
+                {isInterruptedTurn ? <p className="status-note">A turn player is inactive. You can keep confirming guesses or end the turn manually.</p> : null}
                 <button
                   className="button button-primary"
                   type="button"
@@ -329,12 +423,18 @@ export function GameplayPage({
                 >
                   {isConfirmingGuess ? 'Confirming guess…' : 'Confirm guessed word'}
                 </button>
+                {canEndInterruptedTurn ? (
+                  <button className="button button-secondary" type="button" disabled={isEndingTurn} onClick={() => void onEndTurn()}>
+                    {isEndingTurn ? 'Ending turn…' : 'End turn'}
+                  </button>
+                ) : null}
               </>
             ) : (
               <>
                 <p className="observer-copy">The current word stays hidden from observers and the guesser.</p>
                 {gameplayView?.isCurrentPlayerGuesser ? <span className="status-pill">You are guessing this turn</span> : null}
                 {!gameplayView?.isCurrentPlayerGuesser ? <span className="status-pill">Observer view</span> : null}
+                {isInterruptedTurn ? <p className="status-note">The current turn stays live even while a turn player is inactive.</p> : null}
               </>
             )
           ) : room.phase === 'roundSummary' ? (

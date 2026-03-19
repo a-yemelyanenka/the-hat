@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using TheHat.Backend.Contracts;
@@ -59,6 +60,31 @@ public sealed class RoomGameplayApiTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task StartTurn_OnlyAssignedExplainerCanStartPreparedTurn()
+    {
+        var seededRoom = await SeedPreparedRoomAsync();
+
+        using var client = _factory.CreateClient();
+
+        var guestResponse = await client.PostAsJsonAsync(
+            $"/api/rooms/{seededRoom.RoomId}/gameplay/start-turn",
+            new StartTurnRequestDto(seededRoom.GuestPlayerId));
+
+        Assert.Equal(HttpStatusCode.BadRequest, guestResponse.StatusCode);
+
+        var hostResponse = await client.PostAsJsonAsync(
+            $"/api/rooms/{seededRoom.RoomId}/gameplay/start-turn",
+            new StartTurnRequestDto(seededRoom.HostPlayerId));
+
+        Assert.Equal(HttpStatusCode.OK, hostResponse.StatusCode);
+
+        var startedRoom = await hostResponse.Content.ReadFromJsonAsync<RoomSnapshotDto>(JsonOptions);
+        Assert.NotNull(startedRoom);
+        Assert.Equal(RoomPhase.InProgress, startedRoom!.Phase);
+        Assert.NotNull(startedRoom.CurrentTurn?.ActiveWordId);
+    }
+
+    [Fact]
     public async Task PauseAndResume_UpdateRoomPhaseAndTimerState()
     {
         var seededRoom = await SeedStartedRoomAsync(singleWord: false);
@@ -109,12 +135,80 @@ public sealed class RoomGameplayApiTests : IAsyncDisposable
 
         var continuedRoom = await continueResponse.Content.ReadFromJsonAsync<RoomSnapshotDto>(JsonOptions);
         Assert.NotNull(continuedRoom);
-        Assert.Equal(RoomPhase.InProgress, continuedRoom!.Phase);
+        Assert.Equal(RoomPhase.AwaitingTurnStart, continuedRoom!.Phase);
         Assert.Equal(2, continuedRoom.CurrentRoundNumber);
         Assert.Equal(RoundRule.GesturesOnly, continuedRoom.Rounds.Single(round => round.RoundNumber == 2).Rule);
     }
 
+    [Fact]
+    public async Task EndTurn_WhenTurnIsInterrupted_EndsTurnForExplainer()
+    {
+        var seededRoom = await SeedStartedRoomAsync(singleWord: false);
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<TheHatDbContext>();
+            var room = await dbContext.Rooms.SingleAsync(room => room.RoomId == seededRoom.RoomId);
+            room.Players.Single(player => player.Id == seededRoom.GuestPlayerId).IsActive = false;
+            await dbContext.SaveChangesAsync();
+        }
+
+        using var client = _factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/rooms/{seededRoom.RoomId}/gameplay/end-turn",
+            new EndTurnRequestDto(seededRoom.HostPlayerId));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var updatedRoom = await response.Content.ReadFromJsonAsync<RoomSnapshotDto>(JsonOptions);
+        Assert.NotNull(updatedRoom);
+        Assert.Equal(RoomPhase.Paused, updatedRoom!.Phase);
+        Assert.Null(updatedRoom.CurrentTurn);
+        Assert.False(updatedRoom.Players.Single(player => player.PlayerId == seededRoom.GuestPlayerId).IsActive);
+    }
+
+    [Fact]
+    public async Task GetGameplay_WhenTurnTimerExpires_AdvancesToPreparedNextTurn()
+    {
+        var seededRoom = await SeedStartedRoomAsync(singleWord: false);
+
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<TheHatDbContext>();
+            var room = await dbContext.Rooms.SingleAsync(room => room.RoomId == seededRoom.RoomId);
+            room.CurrentTurn!.EndsAtUtc = DateTime.UtcNow.AddMilliseconds(-250);
+            await dbContext.SaveChangesAsync();
+        }
+
+        using var client = _factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/rooms/{seededRoom.RoomId}/gameplay?playerId={seededRoom.HostPlayerId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<GameplayViewDto>(JsonOptions);
+        Assert.NotNull(payload);
+        Assert.Equal(RoomPhase.AwaitingTurnStart, payload!.Room.Phase);
+        Assert.NotNull(payload.Room.CurrentTurn);
+        Assert.Equal(seededRoom.GuestPlayerId, payload.Room.CurrentTurn!.ExplainerPlayerId);
+        Assert.Null(payload.ActiveWord);
+    }
+
     private async Task<SeededRoom> SeedStartedRoomAsync(bool singleWord)
+    {
+        var seededRoom = await SeedPreparedRoomAsync(singleWord);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<TheHatDbContext>();
+        var room = await dbContext.Rooms.SingleAsync(existingRoom => existingRoom.RoomId == seededRoom.RoomId);
+        new RoomEngine(new DisplayNameNormalizer()).StartTurn(room, nowUtc: DateTime.UtcNow.AddSeconds(2));
+        await dbContext.SaveChangesAsync();
+
+        return seededRoom;
+    }
+
+    private async Task<SeededRoom> SeedPreparedRoomAsync(bool singleWord = false)
     {
         await using var scope = _factory.Services.CreateAsyncScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<TheHatDbContext>();

@@ -1,5 +1,5 @@
 export type PlayerOrderMode = 'random' | 'manual'
-export type RoomPhase = 'lobby' | 'inProgress' | 'paused' | 'roundSummary' | 'completed'
+export type RoomPhase = 'lobby' | 'awaitingTurnStart' | 'inProgress' | 'paused' | 'roundSummary' | 'completed'
 export type RoundRule = 'explainNoSynonyms' | 'gesturesOnly' | 'oneWordOnly'
 
 export interface RoomSettingsDto {
@@ -122,7 +122,15 @@ export interface StartGameRequestDto {
   hostPlayerId: string
 }
 
+export interface StartTurnRequestDto {
+  playerId: string
+}
+
 export interface ConfirmGuessRequestDto {
+  playerId: string
+}
+
+export interface EndTurnRequestDto {
   playerId: string
 }
 

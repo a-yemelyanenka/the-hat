@@ -17,6 +17,7 @@ import {
   confirmGuess,
   continueRound,
   createRoom,
+  endTurn,
   getGameplayView,
   getRoom,
   joinRoom,
@@ -25,6 +26,7 @@ import {
   resumeGame,
   RoomServiceError,
   startGame,
+  startTurn,
   updateRoomSettings,
 } from './services/roomsService'
 import type {
@@ -41,7 +43,6 @@ import { defaultFormState } from './appModels'
 
 const STORAGE_KEY = 'the-hat:room-session'
 const LOBBY_REFRESH_INTERVAL_MS = 3000
-const GAMEPLAY_REFRESH_INTERVAL_MS = 1000
 
 function getRoute(pathname: string): Route {
   if (pathname === '/create-room') {
@@ -148,6 +149,12 @@ function hasDuplicateDisplayNameProblem(problem: ValidationProblemDetails): bool
   return messages.some((message) => message.toLowerCase().includes('already taken'))
 }
 
+function hasRejoinCandidateNotFoundProblem(problem: ValidationProblemDetails): boolean {
+  const messages = Object.entries(problem.errors ?? {}).find(([key]) => key.toLowerCase() === 'displayname')?.[1] ?? []
+
+  return messages.some((message) => message.toLowerCase().includes('no player with this display name was found'))
+}
+
 function App() {
   const [route, setRoute] = useState<Route>(() => getRoute(window.location.pathname))
   const [formState, setFormState] = useState<CreateRoomFormState>(defaultFormState)
@@ -171,7 +178,9 @@ function App() {
   const [gameplayView, setGameplayView] = useState<GameplayViewDto | null>(null)
   const [gameplayError, setGameplayError] = useState('')
   const [isGameplayRefreshing, setIsGameplayRefreshing] = useState(false)
+  const [isStartingTurn, setIsStartingTurn] = useState(false)
   const [isConfirmingGuess, setIsConfirmingGuess] = useState(false)
+  const [isEndingTurn, setIsEndingTurn] = useState(false)
   const [isPausingGame, setIsPausingGame] = useState(false)
   const [isResumingGame, setIsResumingGame] = useState(false)
   const [isContinuingRound, setIsContinuingRound] = useState(false)
@@ -205,6 +214,9 @@ function App() {
 
   const lobbyRoomId = lobbySession?.room.roomId ?? null
   const lobbyPlayerId = lobbySession?.currentPlayerId ?? null
+  const lobbyInviteCode = lobbySession?.room.inviteCode ?? null
+  const lobbyPlayerDisplayName =
+    lobbySession?.room.players.find((player) => player.playerId === lobbyPlayerId)?.displayName ?? null
   const isGameplayActive = Boolean(lobbySession && lobbySession.room.phase !== 'lobby')
 
   const updateRoomSessionSnapshot = useCallback((updatedRoom: RoomSnapshotDto) => {
@@ -218,40 +230,14 @@ function App() {
     )
   }, [])
 
-  const loadGameplayView = useCallback(
-    async (roomId: string, playerId: string, backgroundRefresh: boolean) => {
-      if (!backgroundRefresh) {
-        setIsGameplayRefreshing(true)
-      }
-
-      try {
-        const refreshedGameplayView = await getGameplayView(roomId, playerId)
-        setGameplayView(refreshedGameplayView)
-        updateRoomSessionSnapshot(refreshedGameplayView.room)
-        setGameplayError('')
-        return refreshedGameplayView
-      } catch (error) {
-        if (error instanceof RoomServiceError) {
-          setGameplayError(error.message)
-        } else {
-          setGameplayError('Loading the gameplay view failed. Try again in a moment.')
-        }
-
-        return null
-      } finally {
-        if (!backgroundRefresh) {
-          setIsGameplayRefreshing(false)
-        }
-      }
-    },
-    [updateRoomSessionSnapshot],
-  )
-
   useEffect(() => {
     if (!lobbyRoomId) {
       setIsLobbyRefreshing(false)
       setLobbyRealtimeSyncState('connecting')
       setLobbySyncError('')
+      setGameplayView(null)
+      setGameplayError('')
+      setIsGameplayRefreshing(false)
       return
     }
 
@@ -318,33 +304,66 @@ function App() {
 
     setLobbyRealtimeSyncState('connecting')
 
-    const connectionPromise = createRoomRealtimeConnection({
-      roomId: lobbyRoomId,
-      playerId: lobbyPlayerId ?? undefined,
-      onRoomUpdated: (refreshedRoom) => {
-        if (isDisposed) {
-          return
-        }
+    const connectionPromise = (async () => {
+      if (!isGameplayActive && lobbyInviteCode && lobbyPlayerDisplayName) {
+        try {
+          const rejoinedRoom = await rejoinRoom(lobbyInviteCode, {
+            displayName: lobbyPlayerDisplayName,
+          })
 
-        updateRoomSessionSnapshot(refreshedRoom)
-        setLobbyRealtimeSyncState('connected')
-        setLobbySyncError('')
-      },
-      onReconnecting: () => {
-        if (!isDisposed) {
-          setLobbyRealtimeSyncState('reconnecting')
+          if (!isDisposed) {
+            updateRoomSessionSnapshot(rejoinedRoom)
+            setLobbySyncError('')
+          }
+        } catch (error) {
+          if (error instanceof RoomServiceError && !isDisposed && error.statusCode !== 400) {
+            setLobbySyncError(error.message)
+          }
         }
-      },
-      onReconnected: () => {
-        if (!isDisposed) {
+      }
+
+      return createRoomRealtimeConnection({
+        roomId: lobbyRoomId,
+        playerId: lobbyPlayerId ?? undefined,
+        onRoomUpdated: (refreshedRoom) => {
+          if (isDisposed) {
+            return
+          }
+
+          updateRoomSessionSnapshot(refreshedRoom)
           setLobbyRealtimeSyncState('connected')
           setLobbySyncError('')
-        }
-      },
-      onClosed: () => {
-        handleFallback()
-      },
-    }).catch((error) => {
+        },
+        onGameplayUpdated: (refreshedGameplayView) => {
+          if (isDisposed) {
+            return
+          }
+
+          setGameplayView(refreshedGameplayView)
+          updateRoomSessionSnapshot(refreshedGameplayView.room)
+          setGameplayError('')
+          setIsGameplayRefreshing(false)
+        },
+        onReconnecting: () => {
+          if (!isDisposed) {
+            setLobbyRealtimeSyncState('reconnecting')
+            if (isGameplayActive) {
+              setIsGameplayRefreshing(true)
+            }
+          }
+        },
+        onReconnected: () => {
+          if (!isDisposed) {
+            setLobbyRealtimeSyncState('connected')
+            setLobbySyncError('')
+            setGameplayError('')
+          }
+        },
+        onClosed: () => {
+          handleFallback()
+        },
+      })
+    })().catch((error) => {
       if (error instanceof RoomServiceError) {
         handleFallback(error.message)
         return null
@@ -361,38 +380,81 @@ function App() {
         await connection?.stop()
       })
     }
-  }, [lobbyPlayerId, lobbyRoomId, updateRoomSessionSnapshot])
+  }, [isGameplayActive, lobbyInviteCode, lobbyPlayerDisplayName, lobbyPlayerId, lobbyRoomId, updateRoomSessionSnapshot])
 
   useEffect(() => {
-    if (!lobbyRoomId || !lobbyPlayerId || !isGameplayActive) {
+    if (!isGameplayActive) {
       setGameplayView(null)
       setGameplayError('')
       setIsGameplayRefreshing(false)
       return
     }
 
-    let isDisposed = false
-    const roomId = lobbyRoomId
-    const playerId = lobbyPlayerId
+    setIsGameplayRefreshing(gameplayView === null)
+  }, [gameplayView, isGameplayActive])
 
-    const refreshGameplay = async (backgroundRefresh: boolean) => {
-      const refreshedGameplayView = await loadGameplayView(roomId, playerId, backgroundRefresh)
-      if (isDisposed || !refreshedGameplayView) {
-        return
+  useEffect(() => {
+    if (!isGameplayActive || !lobbyRoomId || !lobbyPlayerId) {
+      return
+    }
+
+    let isDisposed = false
+    let expiryTimeoutId: number | null = null
+
+    const refreshGameplay = async () => {
+      if (!isDisposed) {
+        setIsGameplayRefreshing(true)
+      }
+
+      try {
+        const refreshedGameplayView = await getGameplayView(lobbyRoomId, lobbyPlayerId)
+        if (isDisposed) {
+          return
+        }
+
+        setGameplayView(refreshedGameplayView)
+        updateRoomSessionSnapshot(refreshedGameplayView.room)
+        setGameplayError('')
+      } catch (error) {
+        if (isDisposed) {
+          return
+        }
+
+        if (error instanceof RoomServiceError) {
+          setGameplayError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        } else {
+          setGameplayError('Loading the gameplay view failed. Try again in a moment.')
+        }
+      } finally {
+        if (!isDisposed) {
+          setIsGameplayRefreshing(false)
+        }
       }
     }
 
-    void refreshGameplay(false)
+    if (gameplayView === null) {
+      void refreshGameplay()
+    }
 
-    const intervalId = window.setInterval(() => {
-      void refreshGameplay(true)
-    }, GAMEPLAY_REFRESH_INTERVAL_MS)
+    if (gameplayView?.room.phase === 'inProgress' && gameplayView.room.currentTurn) {
+      const endsAtMilliseconds = Date.parse(gameplayView.room.currentTurn.endsAtUtc)
+
+      if (!Number.isNaN(endsAtMilliseconds)) {
+        const delayMilliseconds = Math.max(250, endsAtMilliseconds - Date.now() + 250)
+        expiryTimeoutId = window.setTimeout(() => {
+          void refreshGameplay()
+        }, delayMilliseconds)
+      }
+    }
 
     return () => {
       isDisposed = true
-      window.clearInterval(intervalId)
+
+      if (expiryTimeoutId !== null) {
+        window.clearTimeout(expiryTimeoutId)
+      }
     }
-  }, [isGameplayActive, loadGameplayView, lobbyPlayerId, lobbyRoomId])
+  }, [gameplayView, isGameplayActive, lobbyPlayerId, lobbyRoomId, updateRoomSessionSnapshot])
 
   const navigate = (nextPath: string) => {
     window.history.pushState({}, '', nextPath)
@@ -520,50 +582,67 @@ function App() {
       displayName: joinDisplayName.trim(),
     }
 
-    try {
-      const result = await joinRoom(route.inviteCode, payload)
+    const completeJoin = (result: RoomSnapshotDto) => {
       setRoomSession({
         room: result,
         currentPlayerId: resolveCurrentPlayerId(result, payload.displayName),
       })
       navigate(`/rooms/${result.roomId}/lobby`)
-    } catch (error) {
-      if (error instanceof RoomServiceError) {
-        if (error.validationProblem) {
-          if (hasDuplicateDisplayNameProblem(error.validationProblem)) {
-            try {
-              const result = await rejoinRoom(route.inviteCode, payload)
-              setRoomSession({
-                room: result,
-                currentPlayerId: resolveCurrentPlayerId(result, payload.displayName),
-              })
-              navigate(`/rooms/${result.roomId}/lobby`)
-              return
-            } catch (rejoinError) {
-              if (rejoinError instanceof RoomServiceError) {
-                if (rejoinError.validationProblem) {
-                  applyJoinValidationProblem(rejoinError.validationProblem)
-                  return
-                }
+    }
 
-                setJoinServerError(rejoinError.message)
-                return
-              }
-
-              setJoinServerError('Rejoining the room failed. Try again in a moment.')
-              return
-            }
-          }
-
-          applyJoinValidationProblem(error.validationProblem)
+    try {
+      const rejoinResult = await rejoinRoom(route.inviteCode, payload)
+      completeJoin(rejoinResult)
+    } catch (rejoinError) {
+      if (rejoinError instanceof RoomServiceError) {
+        if (rejoinError.validationProblem && !hasRejoinCandidateNotFoundProblem(rejoinError.validationProblem)) {
+          applyJoinValidationProblem(rejoinError.validationProblem)
           return
         }
 
-        setJoinServerError(error.message)
-        return
+        if (!rejoinError.validationProblem) {
+          setJoinServerError(rejoinError.message)
+          return
+        }
       }
 
-      setJoinServerError('Joining the room failed. Try again in a moment.')
+      try {
+        const joinResult = await joinRoom(route.inviteCode, payload)
+        completeJoin(joinResult)
+      } catch (joinError) {
+        if (joinError instanceof RoomServiceError) {
+          if (joinError.validationProblem) {
+            if (hasDuplicateDisplayNameProblem(joinError.validationProblem)) {
+              try {
+                const retryRejoinResult = await rejoinRoom(route.inviteCode, payload)
+                completeJoin(retryRejoinResult)
+                return
+              } catch (retryRejoinError) {
+                if (retryRejoinError instanceof RoomServiceError) {
+                  if (retryRejoinError.validationProblem) {
+                    applyJoinValidationProblem(retryRejoinError.validationProblem)
+                    return
+                  }
+
+                  setJoinServerError(retryRejoinError.message)
+                  return
+                }
+
+                setJoinServerError('Rejoining the room failed. Try again in a moment.')
+                return
+              }
+            }
+
+            applyJoinValidationProblem(joinError.validationProblem)
+            return
+          }
+
+          setJoinServerError(joinError.message)
+          return
+        }
+
+        setJoinServerError('Joining the room failed. Try again in a moment.')
+      }
     } finally {
       setIsJoining(false)
     }
@@ -637,7 +716,6 @@ function App() {
       })
 
       updateRoomSessionSnapshot(updatedRoom)
-      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
     } catch (error) {
       if (error instanceof RoomServiceError) {
         setLobbyStartError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
@@ -664,7 +742,6 @@ function App() {
       })
 
       updateRoomSessionSnapshot(updatedRoom)
-      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
     } catch (error) {
       if (error instanceof RoomServiceError) {
         setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
@@ -674,6 +751,58 @@ function App() {
       setGameplayActionError('Confirming the guess failed. Try again in a moment.')
     } finally {
       setIsConfirmingGuess(false)
+    }
+  }
+
+  const handleStartTurn = async (): Promise<void> => {
+    if (!lobbySession) {
+      return
+    }
+
+    setIsStartingTurn(true)
+    setGameplayActionError('')
+
+    try {
+      const updatedRoom = await startTurn(lobbySession.room.roomId, {
+        playerId: lobbySession.currentPlayerId,
+      })
+
+      updateRoomSessionSnapshot(updatedRoom)
+    } catch (error) {
+      if (error instanceof RoomServiceError) {
+        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        return
+      }
+
+      setGameplayActionError('Starting the turn failed. Try again in a moment.')
+    } finally {
+      setIsStartingTurn(false)
+    }
+  }
+
+  const handleEndTurn = async (): Promise<void> => {
+    if (!lobbySession) {
+      return
+    }
+
+    setIsEndingTurn(true)
+    setGameplayActionError('')
+
+    try {
+      const updatedRoom = await endTurn(lobbySession.room.roomId, {
+        playerId: lobbySession.currentPlayerId,
+      })
+
+      updateRoomSessionSnapshot(updatedRoom)
+    } catch (error) {
+      if (error instanceof RoomServiceError) {
+        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        return
+      }
+
+      setGameplayActionError('Ending the current turn failed. Try again in a moment.')
+    } finally {
+      setIsEndingTurn(false)
     }
   }
 
@@ -691,7 +820,6 @@ function App() {
       })
 
       updateRoomSessionSnapshot(updatedRoom)
-      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
     } catch (error) {
       if (error instanceof RoomServiceError) {
         setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
@@ -718,7 +846,6 @@ function App() {
       })
 
       updateRoomSessionSnapshot(updatedRoom)
-      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
     } catch (error) {
       if (error instanceof RoomServiceError) {
         setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
@@ -745,7 +872,6 @@ function App() {
       })
 
       updateRoomSessionSnapshot(updatedRoom)
-      await loadGameplayView(updatedRoom.roomId, lobbySession.currentPlayerId, false)
     } catch (error) {
       if (error instanceof RoomServiceError) {
         setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
@@ -805,12 +931,16 @@ function App() {
           syncError={gameplayError || lobbySyncError}
           realtimeSyncState={lobbyRealtimeSyncState}
           isRefreshing={isGameplayRefreshing || isLobbyRefreshing}
+          isStartingTurn={isStartingTurn}
           isConfirmingGuess={isConfirmingGuess}
+          isEndingTurn={isEndingTurn}
           isPausingGame={isPausingGame}
           isResumingGame={isResumingGame}
           isContinuingRound={isContinuingRound}
           actionError={gameplayActionError}
+          onStartTurn={handleStartTurn}
           onConfirmGuess={handleConfirmGuess}
+          onEndTurn={handleEndTurn}
           onPauseGame={handlePauseGame}
           onResumeGame={handleResumeGame}
           onContinueRound={handleContinueRound}

@@ -206,6 +206,34 @@ public sealed class RoomsController(
         return Ok(room.ToDto());
     }
 
+    [HttpPost("{roomId}/gameplay/start-turn")]
+    [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RoomSnapshotDto>> StartTurn(
+        string roomId,
+        [FromBody] StartTurnRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        RoomState room;
+
+        try
+        {
+            room = await roomGameplayService.StartTurnAsync(roomId, request.PlayerId, cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
+        return Ok(room.ToDto());
+    }
+
     [HttpPost("{roomId}/gameplay/guesses/confirm")]
     [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
@@ -220,6 +248,34 @@ public sealed class RoomsController(
         try
         {
             room = await roomGameplayService.ConfirmGuessAsync(roomId, request.PlayerId, cancellationToken);
+        }
+        catch (RoomNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (DomainValidationException exception)
+        {
+            return ValidationProblem(CreateModelState(exception));
+        }
+
+        await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
+        return Ok(room.ToDto());
+    }
+
+    [HttpPost("{roomId}/gameplay/end-turn")]
+    [ProducesResponseType<RoomSnapshotDto>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<RoomSnapshotDto>> EndTurn(
+        string roomId,
+        [FromBody] EndTurnRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        RoomState room;
+
+        try
+        {
+            room = await roomGameplayService.EndTurnAsync(roomId, request.PlayerId, cancellationToken);
         }
         catch (RoomNotFoundException)
         {
