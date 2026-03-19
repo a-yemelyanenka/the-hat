@@ -56,6 +56,10 @@ public sealed class RoomLobbyApiTests : IAsyncDisposable
         Assert.False(hostProgress.IsComplete);
         Assert.False(payload.LobbyReadiness.CanStart);
         Assert.Contains(payload.LobbyReadiness.BlockingReasons, reason => reason.Contains("Bob", StringComparison.Ordinal));
+        Assert.Contains(payload.LobbyReadiness.BlockingMessages, message =>
+            message.Key == "backend.lobby.playerNeedsMoreWords"
+            && message.Parameters["playerName"] == "Bob"
+            && message.Parameters["missingCount"] == "2");
     }
 
     [Fact]
@@ -93,10 +97,14 @@ public sealed class RoomLobbyApiTests : IAsyncDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var payload = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(JsonOptions);
+        var payload = await response.Content.ReadFromJsonAsync<LocalizedValidationProblemDetails>(JsonOptions);
         Assert.NotNull(payload);
         Assert.True(payload!.Errors?.ContainsKey("startGame"));
         Assert.Contains(payload.Errors!["startGame"], error => error.Contains("still needs", StringComparison.Ordinal));
+        Assert.True(payload.MessageErrors?.ContainsKey("startGame"));
+        Assert.Contains(payload.MessageErrors!["startGame"], message =>
+            message.Key == "backend.lobby.playerNeedsMoreWords"
+            && message.Parameters["playerName"] == "Bob");
     }
 
     private async Task<SeededRoom> SeedRoomAsync()

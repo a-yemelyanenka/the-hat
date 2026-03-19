@@ -1,4 +1,4 @@
-import type { PlayerOrderMode, RoomSnapshotDto } from './contracts/theHatContracts'
+import type { LocalizedMessageDto, PlayerOrderMode, RoomSnapshotDto } from './contracts/theHatContracts'
 
 export type Route =
   | { name: 'home' }
@@ -18,6 +18,8 @@ export type FieldErrors = Partial<Record<keyof CreateRoomFormState, string>>
 export type ValidationProblemDetails = {
   title?: string
   errors?: Record<string, string[]>
+  messageTitle?: LocalizedMessageDto
+  messageErrors?: Record<string, LocalizedMessageDto[]>
 }
 
 export type CopyState = 'idle' | 'copied' | 'failed'

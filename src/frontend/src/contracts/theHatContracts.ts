@@ -2,6 +2,12 @@ export type PlayerOrderMode = 'random' | 'manual'
 export type RoomPhase = 'lobby' | 'awaitingTurnStart' | 'inProgress' | 'paused' | 'roundSummary' | 'completed'
 export type RoundRule = 'explainNoSynonyms' | 'gesturesOnly' | 'oneWordOnly'
 
+export interface LocalizedMessageDto {
+  key: string
+  parameters: Record<string, string>
+  fallback: string | null
+}
+
 export interface RoomSettingsDto {
   wordsPerPlayer: number
   turnDurationSeconds: number
@@ -18,6 +24,7 @@ export interface PlayerSubmissionProgressDto {
 export interface LobbyReadinessDto {
   canStart: boolean
   blockingReasons: string[]
+  blockingMessages: LocalizedMessageDto[]
 }
 
 export interface PlayerDto {

@@ -92,9 +92,11 @@ public sealed class RoomWordSubmissionApiTests : IAsyncDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var payload = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>(JsonOptions);
+        var payload = await response.Content.ReadFromJsonAsync<LocalizedValidationProblemDetails>(JsonOptions);
         Assert.NotNull(payload);
         Assert.Contains("Words can only be viewed or edited before the game starts.", payload!.Errors![nameof(RoomState.Phase)]);
+        Assert.True(payload.MessageErrors?.ContainsKey(nameof(RoomState.Phase)));
+        Assert.Contains(payload.MessageErrors![nameof(RoomState.Phase)], message => message.Key == "backend.wordSubmission.lobbyOnly");
     }
 
     private async Task<SeededRoom> SeedRoomAsync()

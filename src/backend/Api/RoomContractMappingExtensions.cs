@@ -1,5 +1,6 @@
 using TheHat.Backend.Contracts;
 using TheHat.Backend.Domain;
+using TheHat.Backend.Api.Localization;
 
 namespace TheHat.Backend.Api;
 
@@ -71,7 +72,8 @@ internal static class RoomContractMappingExtensions
 
     private static LobbyReadinessDto ToDto(this LobbyReadiness readiness) => new(
         readiness.CanStart,
-        readiness.BlockingReasons.ToList());
+        readiness.BlockingReasons.ToList(),
+        readiness.BlockingReasons.Select(BackendMessageCatalog.Map).ToList());
 
     private static WordSubmissionDto ToDto(this WordEntry word) => new(
         word.Id,

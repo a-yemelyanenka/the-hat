@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { FormEvent } from 'react'
+import type { FormEvent, ReactElement } from 'react'
+import { useTranslation } from 'react-i18next'
 import './App.css'
 import { CreateRoomPage } from './components/CreateRoomPage'
 import { GameplayPage } from './components/GameplayPage'
 import { HomePage } from './components/HomePage'
 import { JoinRoomPage } from './components/JoinRoomPage'
+import { LanguageSwitcher } from './components/LanguageSwitcher'
 import { LobbyPage } from './components/LobbyPage'
 import type {
   CreateRoomRequestDto,
@@ -40,6 +42,7 @@ import type {
   ValidationProblemDetails,
 } from './appModels'
 import { defaultFormState } from './appModels'
+import { getFieldProblemMessage, getFirstProblemMessage as getLocalizedProblemMessage, hasProblemMessageKey } from './localization'
 
 const STORAGE_KEY = 'the-hat:room-session'
 const LOBBY_REFRESH_INTERVAL_MS = 3000
@@ -138,24 +141,8 @@ function resolveCurrentPlayerId(room: RoomSnapshotDto, displayName: string): str
   return caseInsensitiveMatch?.playerId ?? room.hostPlayerId
 }
 
-function getFirstProblemMessage(problem: ValidationProblemDetails): string {
-  const firstMessage = Object.values(problem.errors ?? {}).flat()[0]
-  return firstMessage ?? problem.title ?? 'The request could not be completed.'
-}
-
-function hasDuplicateDisplayNameProblem(problem: ValidationProblemDetails): boolean {
-  const messages = Object.entries(problem.errors ?? {}).find(([key]) => key.toLowerCase() === 'displayname')?.[1] ?? []
-
-  return messages.some((message) => message.toLowerCase().includes('already taken'))
-}
-
-function hasRejoinCandidateNotFoundProblem(problem: ValidationProblemDetails): boolean {
-  const messages = Object.entries(problem.errors ?? {}).find(([key]) => key.toLowerCase() === 'displayname')?.[1] ?? []
-
-  return messages.some((message) => message.toLowerCase().includes('no player with this display name was found'))
-}
-
 function App() {
+  const { t } = useTranslation()
   const [route, setRoute] = useState<Route>(() => getRoute(window.location.pathname))
   const [formState, setFormState] = useState<CreateRoomFormState>(defaultFormState)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -185,6 +172,18 @@ function App() {
   const [isResumingGame, setIsResumingGame] = useState(false)
   const [isContinuingRound, setIsContinuingRound] = useState(false)
   const [gameplayActionError, setGameplayActionError] = useState('')
+
+  const renderPage = useCallback(
+    (content: ReactElement) => (
+      <>
+        <div className="app-toolbar">
+          <LanguageSwitcher />
+        </div>
+        {content}
+      </>
+    ),
+    [],
+  )
 
   useEffect(() => {
     const handlePopState = () => {
@@ -272,7 +271,7 @@ function App() {
         if (error instanceof RoomServiceError) {
           setLobbySyncError(error.message)
         } else {
-          setLobbySyncError('The lobby could not be refreshed. Try again in a moment.')
+          setLobbySyncError(t('app.fallbackLobbyRefresh'))
         }
       } finally {
         if (!isDisposed && !backgroundRefresh) {
@@ -298,7 +297,7 @@ function App() {
       }
 
       setLobbyRealtimeSyncState('fallback')
-      setLobbySyncError(message ?? 'Realtime updates are unavailable. Falling back to periodic refresh.')
+      setLobbySyncError(message ?? t('app.realtimeFallback'))
       startPolling()
     }
 
@@ -380,7 +379,7 @@ function App() {
         await connection?.stop()
       })
     }
-  }, [isGameplayActive, lobbyInviteCode, lobbyPlayerDisplayName, lobbyPlayerId, lobbyRoomId, updateRoomSessionSnapshot])
+  }, [isGameplayActive, lobbyInviteCode, lobbyPlayerDisplayName, lobbyPlayerId, lobbyRoomId, t, updateRoomSessionSnapshot])
 
   useEffect(() => {
     if (!isGameplayActive) {
@@ -421,9 +420,9 @@ function App() {
         }
 
         if (error instanceof RoomServiceError) {
-          setGameplayError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+          setGameplayError(error.validationProblem ? getLocalizedProblemMessage(t, error.validationProblem) : error.message)
         } else {
-          setGameplayError('Loading the gameplay view failed. Try again in a moment.')
+          setGameplayError(t('app.gameplayLoadFallback'))
         }
       } finally {
         if (!isDisposed) {
@@ -454,7 +453,7 @@ function App() {
         window.clearTimeout(expiryTimeoutId)
       }
     }
-  }, [gameplayView, isGameplayActive, lobbyPlayerId, lobbyRoomId, updateRoomSessionSnapshot])
+  }, [gameplayView, isGameplayActive, lobbyPlayerId, lobbyRoomId, t, updateRoomSessionSnapshot])
 
   const navigate = (nextPath: string) => {
     window.history.pushState({}, '', nextPath)
@@ -469,17 +468,17 @@ function App() {
     const nextErrors: FieldErrors = {}
 
     if (!formState.hostDisplayName.trim()) {
-      nextErrors.hostDisplayName = 'Enter your display name.'
+      nextErrors.hostDisplayName = t('app.enterDisplayName')
     }
 
     const wordsPerPlayer = Number(formState.wordsPerPlayer)
     if (!Number.isInteger(wordsPerPlayer) || wordsPerPlayer <= 0) {
-      nextErrors.wordsPerPlayer = 'Choose a whole number greater than zero.'
+      nextErrors.wordsPerPlayer = t('app.chooseWholeNumber')
     }
 
     const turnDurationSeconds = Number(formState.turnDurationSeconds)
     if (!Number.isInteger(turnDurationSeconds) || turnDurationSeconds <= 0) {
-      nextErrors.turnDurationSeconds = 'Choose a whole number greater than zero.'
+      nextErrors.turnDurationSeconds = t('app.chooseWholeNumber')
     }
 
     return nextErrors
@@ -490,7 +489,7 @@ function App() {
 
     for (const [key, messages] of Object.entries(problem.errors ?? {})) {
       const normalizedKey = key.toLowerCase()
-      const message = messages[0] ?? 'Invalid value.'
+      const message = getFieldProblemMessage(t, problem, key) || messages[0] || t('app.invalidValue')
 
       if (normalizedKey === 'hostdisplayname') {
         nextErrors.hostDisplayName = message
@@ -502,14 +501,14 @@ function App() {
     }
 
     setFieldErrors(nextErrors)
-    setServerError(problem.title && Object.keys(nextErrors).length === 0 ? problem.title : '')
+    setServerError(problem.title && Object.keys(nextErrors).length === 0 ? getLocalizedProblemMessage(t, problem) : '')
   }
 
   const applyJoinValidationProblem = (problem: ValidationProblemDetails) => {
-    const message = Object.entries(problem.errors ?? {}).find(([key]) => key.toLowerCase() === 'displayname')?.[1]?.[0]
+    const message = getFieldProblemMessage(t, problem, 'displayName')
 
     setJoinFieldError(message ?? '')
-    setJoinServerError(problem.title && !message ? problem.title : '')
+    setJoinServerError(problem.title && !message ? getLocalizedProblemMessage(t, problem) : '')
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -554,7 +553,7 @@ function App() {
         return
       }
 
-      setServerError('Room creation failed. Try again in a moment.')
+        setServerError(t('app.createRoomFallback'))
     } finally {
       setIsSubmitting(false)
     }
@@ -568,7 +567,7 @@ function App() {
     }
 
     if (!joinDisplayName.trim()) {
-      setJoinFieldError('Enter your display name.')
+      setJoinFieldError(t('app.enterDisplayName'))
       setJoinServerError('')
       return
     }
@@ -595,7 +594,7 @@ function App() {
       completeJoin(rejoinResult)
     } catch (rejoinError) {
       if (rejoinError instanceof RoomServiceError) {
-        if (rejoinError.validationProblem && !hasRejoinCandidateNotFoundProblem(rejoinError.validationProblem)) {
+        if (rejoinError.validationProblem && !hasProblemMessageKey(rejoinError.validationProblem, 'displayName', 'backend.join.rejoinCandidateNotFound')) {
           applyJoinValidationProblem(rejoinError.validationProblem)
           return
         }
@@ -612,7 +611,7 @@ function App() {
       } catch (joinError) {
         if (joinError instanceof RoomServiceError) {
           if (joinError.validationProblem) {
-            if (hasDuplicateDisplayNameProblem(joinError.validationProblem)) {
+            if (hasProblemMessageKey(joinError.validationProblem, 'displayName', 'backend.join.displayNameTaken')) {
               try {
                 const retryRejoinResult = await rejoinRoom(route.inviteCode, payload)
                 completeJoin(retryRejoinResult)
@@ -628,7 +627,7 @@ function App() {
                   return
                 }
 
-                setJoinServerError('Rejoining the room failed. Try again in a moment.')
+                setJoinServerError(t('app.rejoinFallback'))
                 return
               }
             }
@@ -641,7 +640,7 @@ function App() {
           return
         }
 
-        setJoinServerError('Joining the room failed. Try again in a moment.')
+        setJoinServerError(t('app.joinFallback'))
       }
     } finally {
       setIsJoining(false)
@@ -686,15 +685,15 @@ function App() {
       })
 
       updateRoomSessionSnapshot(updatedRoom)
-      setLobbySettingsSuccess('Lobby settings saved.')
+      setLobbySettingsSuccess(t('lobby.settingsSaved'))
       return true
     } catch (error) {
       if (error instanceof RoomServiceError) {
-        setLobbySettingsError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        setLobbySettingsError(error.validationProblem ? getLocalizedProblemMessage(t, error.validationProblem) : error.message)
         return false
       }
 
-      setLobbySettingsError('Saving lobby settings failed. Try again in a moment.')
+      setLobbySettingsError(t('app.saveSettingsFallback'))
       return false
     } finally {
       setIsSavingLobbySettings(false)
@@ -718,11 +717,11 @@ function App() {
       updateRoomSessionSnapshot(updatedRoom)
     } catch (error) {
       if (error instanceof RoomServiceError) {
-        setLobbyStartError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        setLobbyStartError(error.validationProblem ? getLocalizedProblemMessage(t, error.validationProblem) : error.message)
         return
       }
 
-      setLobbyStartError('Starting the game failed. Try again in a moment.')
+      setLobbyStartError(t('app.startGameFallback'))
     } finally {
       setIsStartingGame(false)
     }
@@ -744,11 +743,11 @@ function App() {
       updateRoomSessionSnapshot(updatedRoom)
     } catch (error) {
       if (error instanceof RoomServiceError) {
-        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        setGameplayActionError(error.validationProblem ? getLocalizedProblemMessage(t, error.validationProblem) : error.message)
         return
       }
 
-      setGameplayActionError('Confirming the guess failed. Try again in a moment.')
+      setGameplayActionError(t('app.confirmGuessFallback'))
     } finally {
       setIsConfirmingGuess(false)
     }
@@ -770,11 +769,11 @@ function App() {
       updateRoomSessionSnapshot(updatedRoom)
     } catch (error) {
       if (error instanceof RoomServiceError) {
-        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        setGameplayActionError(error.validationProblem ? getLocalizedProblemMessage(t, error.validationProblem) : error.message)
         return
       }
 
-      setGameplayActionError('Starting the turn failed. Try again in a moment.')
+      setGameplayActionError(t('app.startTurnFallback'))
     } finally {
       setIsStartingTurn(false)
     }
@@ -796,11 +795,11 @@ function App() {
       updateRoomSessionSnapshot(updatedRoom)
     } catch (error) {
       if (error instanceof RoomServiceError) {
-        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        setGameplayActionError(error.validationProblem ? getLocalizedProblemMessage(t, error.validationProblem) : error.message)
         return
       }
 
-      setGameplayActionError('Ending the current turn failed. Try again in a moment.')
+      setGameplayActionError(t('app.endTurnFallback'))
     } finally {
       setIsEndingTurn(false)
     }
@@ -822,11 +821,11 @@ function App() {
       updateRoomSessionSnapshot(updatedRoom)
     } catch (error) {
       if (error instanceof RoomServiceError) {
-        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        setGameplayActionError(error.validationProblem ? getLocalizedProblemMessage(t, error.validationProblem) : error.message)
         return
       }
 
-      setGameplayActionError('Pausing the game failed. Try again in a moment.')
+      setGameplayActionError(t('app.pauseFallback'))
     } finally {
       setIsPausingGame(false)
     }
@@ -848,11 +847,11 @@ function App() {
       updateRoomSessionSnapshot(updatedRoom)
     } catch (error) {
       if (error instanceof RoomServiceError) {
-        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        setGameplayActionError(error.validationProblem ? getLocalizedProblemMessage(t, error.validationProblem) : error.message)
         return
       }
 
-      setGameplayActionError('Resuming the game failed. Try again in a moment.')
+      setGameplayActionError(t('app.resumeFallback'))
     } finally {
       setIsResumingGame(false)
     }
@@ -874,11 +873,11 @@ function App() {
       updateRoomSessionSnapshot(updatedRoom)
     } catch (error) {
       if (error instanceof RoomServiceError) {
-        setGameplayActionError(error.validationProblem ? getFirstProblemMessage(error.validationProblem) : error.message)
+        setGameplayActionError(error.validationProblem ? getLocalizedProblemMessage(t, error.validationProblem) : error.message)
         return
       }
 
-      setGameplayActionError('Starting the next round failed. Try again in a moment.')
+      setGameplayActionError(t('app.continueRoundFallback'))
     } finally {
       setIsContinuingRound(false)
     }
@@ -889,7 +888,7 @@ function App() {
   }
 
   if (route.name === 'create-room') {
-    return (
+    return renderPage(
       <CreateRoomPage
         formState={formState}
         fieldErrors={fieldErrors}
@@ -903,12 +902,12 @@ function App() {
           updateFormState((current) => ({ ...current, turnDurationSeconds: value }))
         }
         onPlayerOrderModeChange={(value) => updateFormState((current) => ({ ...current, playerOrderMode: value }))}
-      />
+      />,
     )
   }
 
   if (route.name === 'join-room') {
-    return (
+    return renderPage(
       <JoinRoomPage
         inviteCode={route.inviteCode}
         displayName={joinDisplayName}
@@ -918,13 +917,13 @@ function App() {
         onBack={() => navigate('/')}
         onSubmit={handleJoinSubmit}
         onDisplayNameChange={setJoinDisplayName}
-      />
+      />,
     )
   }
 
   if (route.name === 'lobby') {
     if (isGameplayActive) {
-      return (
+      return renderPage(
         <GameplayPage
           session={lobbySession}
           gameplayView={gameplayView}
@@ -948,11 +947,11 @@ function App() {
           copyState={copyState}
           inviteLink={lobbySession ? buildInviteLink(lobbySession.room.inviteCode) : ''}
           onCopyInviteLink={copyInviteLink}
-        />
+        />,
       )
     }
 
-    return (
+    return renderPage(
       <LobbyPage
         session={lobbySession}
         inviteLink={lobbySession ? buildInviteLink(lobbySession.room.inviteCode) : ''}
@@ -970,11 +969,11 @@ function App() {
         onSaveSettings={handleSaveLobbySettings}
         onStartGame={handleStartGame}
         onRoomUpdated={handleLobbyRoomUpdated}
-      />
+      />,
     )
   }
 
-  return <HomePage onCreateRoom={() => navigate('/create-room')} />
+  return renderPage(<HomePage onCreateRoom={() => navigate('/create-room')} />)
 }
 
 export default App

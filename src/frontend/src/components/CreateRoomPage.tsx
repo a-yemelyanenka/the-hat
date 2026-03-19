@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { PlayerOrderMode } from '../contracts/theHatContracts'
 import type { CreateRoomFormState, FieldErrors } from '../appModels'
 import './CreateRoomPage.css'
@@ -28,38 +29,38 @@ export function CreateRoomPage({
   onTurnDurationSecondsChange,
   onPlayerOrderModeChange,
 }: CreateRoomPageProps) {
+  const { t } = useTranslation()
+
   return (
     <main className="app-shell app-shell-narrow">
       <section className="page-header">
         <button className="button button-secondary" type="button" onClick={onBack}>
-          Back
+          {t('common.back')}
         </button>
         <div>
-          <p className="eyebrow">Create room</p>
-          <h1>Set up the first lobby</h1>
-          <p className="lead">
-            Pick the host identity and the starting rules for the room.
-          </p>
+          <p className="eyebrow">{t('createRoom.eyebrow')}</p>
+          <h1>{t('createRoom.title')}</h1>
+          <p className="lead">{t('createRoom.lead')}</p>
         </div>
       </section>
 
       <section className="form-layout">
         <form className="panel create-room-form" onSubmit={onSubmit} noValidate>
           <div className="form-field">
-            <label htmlFor="hostDisplayName">Host display name</label>
+            <label htmlFor="hostDisplayName">{t('createRoom.hostDisplayName')}</label>
             <input
               id="hostDisplayName"
               name="hostDisplayName"
               type="text"
               autoComplete="nickname"
               maxLength={40}
-              placeholder="Alex"
+              placeholder={t('createRoom.hostPlaceholder')}
               value={formState.hostDisplayName}
               onChange={(event) => onHostDisplayNameChange(event.target.value)}
               aria-invalid={Boolean(fieldErrors.hostDisplayName)}
               aria-describedby={fieldErrors.hostDisplayName ? 'hostDisplayName-error' : undefined}
             />
-            <p className="field-hint">This name becomes the host player in the room.</p>
+            <p className="field-hint">{t('createRoom.hostHint')}</p>
             {fieldErrors.hostDisplayName ? (
               <p className="field-error" id="hostDisplayName-error">
                 {fieldErrors.hostDisplayName}
@@ -69,7 +70,7 @@ export function CreateRoomPage({
 
           <div className="two-column-grid">
             <div className="form-field">
-              <label htmlFor="wordsPerPlayer">Words per player</label>
+              <label htmlFor="wordsPerPlayer">{t('common.wordsPerPlayer')}</label>
               <input
                 id="wordsPerPlayer"
                 name="wordsPerPlayer"
@@ -90,7 +91,7 @@ export function CreateRoomPage({
             </div>
 
             <div className="form-field">
-              <label htmlFor="turnDurationSeconds">Turn timer (seconds)</label>
+              <label htmlFor="turnDurationSeconds">{t('common.turnTimerSeconds')}</label>
               <input
                 id="turnDurationSeconds"
                 name="turnDurationSeconds"
@@ -112,7 +113,7 @@ export function CreateRoomPage({
           </div>
 
           <fieldset className="form-field radio-group">
-            <legend>Player order mode</legend>
+            <legend>{t('createRoom.orderLegend')}</legend>
             <label className="choice-card">
               <input
                 type="radio"
@@ -122,8 +123,8 @@ export function CreateRoomPage({
                 onChange={() => onPlayerOrderModeChange('random')}
               />
               <span>
-                <strong>Random</strong>
-                <small>Generate the order automatically when the lobby is ready.</small>
+                <strong>{t('common.random')}</strong>
+                <small>{t('createRoom.randomDescription')}</small>
               </span>
             </label>
 
@@ -136,8 +137,8 @@ export function CreateRoomPage({
                 onChange={() => onPlayerOrderModeChange('manual')}
               />
               <span>
-                <strong>Manual</strong>
-                <small>The host will arrange player order later in the lobby.</small>
+                <strong>{t('common.manual')}</strong>
+                <small>{t('createRoom.manualDescription')}</small>
               </span>
             </label>
           </fieldset>
@@ -146,29 +147,34 @@ export function CreateRoomPage({
 
           <div className="form-actions">
             <button className="button button-primary" type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating room…' : 'Create room'}
+              {isSubmitting ? t('createRoom.creating') : t('common.createRoom')}
             </button>
           </div>
         </form>
 
-        <aside className="panel side-panel" aria-label="Setup summary">
-          <h2>Default-friendly setup</h2>
-          <p>
-            The form starts with sensible values so a host can create a room quickly,
-            then refine lobby details in later flows.
-          </p>
+        <aside className="panel side-panel" aria-label={t('createRoom.summaryAriaLabel')}>
+          <h2>{t('createRoom.summaryTitle')}</h2>
+          <p>{t('createRoom.summaryBody')}</p>
           <dl className="summary-list">
             <div>
-              <dt>Words per player</dt>
-              <dd>{formState.wordsPerPlayer || '—'}</dd>
+              <dt>{t('common.wordsPerPlayer')}</dt>
+              <dd>{formState.wordsPerPlayer || t('createRoom.noValue')}</dd>
             </div>
             <div>
-              <dt>Turn timer</dt>
-              <dd>{formState.turnDurationSeconds || '—'} seconds</dd>
+              <dt>{t('common.timer')}</dt>
+              <dd>
+                {formState.turnDurationSeconds
+                  ? t('createRoom.secondsValue', { count: Number(formState.turnDurationSeconds) })
+                  : t('createRoom.noValue')}
+              </dd>
             </div>
             <div>
-              <dt>Order mode</dt>
-              <dd>{formState.playerOrderMode === 'random' ? 'Random' : 'Manual'}</dd>
+              <dt>{t('common.orderMode')}</dt>
+              <dd>
+                {formState.playerOrderMode === 'random'
+                  ? t('createRoom.orderModeValue.random')
+                  : t('createRoom.orderModeValue.manual')}
+              </dd>
             </div>
           </dl>
         </aside>

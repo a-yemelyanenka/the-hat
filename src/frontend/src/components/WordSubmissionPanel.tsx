@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { RoomSnapshotDto } from '../contracts/theHatContracts'
+import { getFirstProblemMessage } from '../localization'
 import { getPlayerWords, RoomServiceError, submitWords } from '../services/roomsService'
 import './WordSubmissionPanel.css'
 
@@ -19,6 +21,7 @@ function buildInitialDraft(words: string[], requiredCount: number): string[] {
 }
 
 export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: WordSubmissionPanelProps) {
+  const { t } = useTranslation()
   const [savedWords, setSavedWords] = useState<string[]>([])
   const [draftWords, setDraftWords] = useState<string[]>(() => buildInitialDraft([], room.settings.wordsPerPlayer))
   const [requiredCount, setRequiredCount] = useState(room.settings.wordsPerPlayer)
@@ -57,9 +60,9 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
         }
 
         if (error instanceof RoomServiceError) {
-          setLoadError(error.validationProblem ? Object.values(error.validationProblem.errors ?? {}).flat()[0] ?? error.message : error.message)
+          setLoadError(error.validationProblem ? getFirstProblemMessage(t, error.validationProblem) : error.message)
         } else {
-          setLoadError('Loading your submitted words failed. Try again in a moment.')
+          setLoadError(t('wordSubmission.fallbackLoadError'))
         }
       } finally {
         if (!isDisposed) {
@@ -78,7 +81,7 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
 
     if (!hasCurrentPlayer) {
       setIsLoading(false)
-      setLoadError('Your player session is no longer available in this room.')
+      setLoadError(t('wordSubmission.missingSession'))
       return () => {
         isDisposed = true
       }
@@ -99,7 +102,7 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
     return () => {
       isDisposed = true
     }
-  }, [room.phase, room.roomId, currentPlayerId, hasCurrentPlayer, currentPlayerIsActive])
+  }, [room.phase, room.roomId, currentPlayerId, hasCurrentPlayer, currentPlayerIsActive, t])
 
   useEffect(() => {
     setRequiredCount(room.settings.wordsPerPlayer)
@@ -157,7 +160,7 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
 
   const handleSubmit = async () => {
     if (!canEditWords) {
-      setSubmitError('Reconnecting your player session. Please wait a moment and try again.')
+      setSubmitError(t('wordSubmission.reconnectBeforeSubmit'))
       setSubmitSuccess('')
       return
     }
@@ -165,13 +168,13 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
     const normalizedWords = draftWords.map((word) => word.trim())
 
     if (normalizedWords.length !== requiredCount) {
-      setSubmitError(`Exactly ${requiredCount} words are required before you can save.`)
+      setSubmitError(t('wordSubmission.exactWordsRequired', { count: requiredCount }))
       setSubmitSuccess('')
       return
     }
 
     if (normalizedWords.some((word) => word.length === 0)) {
-      setSubmitError('Each word must contain visible text before you save.')
+      setSubmitError(t('wordSubmission.everyWordRequired'))
       setSubmitSuccess('')
       return
     }
@@ -189,12 +192,12 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
       setSavedWords(normalizedWords)
       setDraftWords([...normalizedWords])
       onRoomUpdated(updatedRoom)
-      setSubmitSuccess('Your words are saved for the lobby.')
+      setSubmitSuccess(t('wordSubmission.savedSuccess'))
     } catch (error) {
       if (error instanceof RoomServiceError) {
-        setSubmitError(error.validationProblem ? Object.values(error.validationProblem.errors ?? {}).flat()[0] ?? error.message : error.message)
+        setSubmitError(error.validationProblem ? getFirstProblemMessage(t, error.validationProblem) : error.message)
       } else {
-        setSubmitError('Saving your words failed. Try again in a moment.')
+        setSubmitError(t('wordSubmission.fallbackSaveError'))
       }
     } finally {
       setIsSaving(false)
@@ -209,33 +212,37 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
     <article className="panel word-panel">
       <div className="word-panel-header">
         <div>
-          <h2>Your words</h2>
-          <p className="status-note">Only your own entries are shown here. The lobby never reveals the full word pool.</p>
+          <h2>{t('wordSubmission.title')}</h2>
+          <p className="status-note">{t('wordSubmission.secrecyHint')}</p>
         </div>
         <span className={`status-pill ${remainingCount === 0 ? 'success' : remainingCount > 0 ? 'warning' : 'error'}`}>
-          {remainingCount === 0 ? 'Ready to save' : remainingCount > 0 ? `${remainingCount} left` : `${Math.abs(remainingCount)} over`}
+          {remainingCount === 0
+            ? t('wordSubmission.readyToSave')
+            : remainingCount > 0
+              ? t('wordSubmission.leftCount', { count: remainingCount })
+              : t('wordSubmission.overCount', { count: Math.abs(remainingCount) })}
         </span>
       </div>
 
       <dl className="summary-list word-summary-list">
         <div>
-          <dt>Required</dt>
+          <dt>{t('common.required')}</dt>
           <dd>{requiredCount}</dd>
         </div>
         <div>
-          <dt>Filled</dt>
+          <dt>{t('common.filled')}</dt>
           <dd>{filledCount}</dd>
         </div>
         <div>
-          <dt>Saved</dt>
+          <dt>{t('common.saved')}</dt>
           <dd>{savedWords.length}</dd>
         </div>
       </dl>
 
-      {isLoading ? <p className="status-note">Loading your saved words…</p> : null}
+      {isLoading ? <p className="status-note">{t('wordSubmission.loadingSavedWords')}</p> : null}
       {loadError ? <p className="banner banner-error compact-banner">{loadError}</p> : null}
       {!isLoading && room.phase === 'lobby' && currentPlayer && !currentPlayer.isActive ? (
-        <p className="status-note">Reconnecting your player session…</p>
+        <p className="status-note">{t('wordSubmission.reconnectingPlayer')}</p>
       ) : null}
 
       {!isLoading && !loadError ? (
@@ -244,12 +251,12 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
             {draftWords.map((word, index) => (
               <div key={`${index}-${draftWords.length}`} className="word-entry-row">
                 <label className="form-field word-entry-field">
-                  <span>Word {index + 1}</span>
+                  <span>{t('wordSubmission.wordLabel', { index: index + 1 })}</span>
                   <input
                     type="text"
                     value={word}
                     maxLength={80}
-                    placeholder="Enter a word or short phrase"
+                    placeholder={t('wordSubmission.wordPlaceholder')}
                     disabled={!canEditWords || isSaving}
                     onChange={(event) => updateWordAtIndex(index, event)}
                   />
@@ -260,7 +267,7 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
                   disabled={draftWords.length === 1 || isSaving || !canEditWords}
                   onClick={() => removeWordField(index)}
                 >
-                  Remove
+                  {t('common.remove')}
                 </button>
               </div>
             ))}
@@ -271,13 +278,13 @@ export function WordSubmissionPanel({ room, currentPlayerId, onRoomUpdated }: Wo
 
           <div className="word-panel-actions">
             <button className="button button-secondary" type="button" disabled={isSaving || !canEditWords} onClick={addWordField}>
-              Add word
+              {t('common.addWord')}
             </button>
             <button className="button button-secondary" type="button" disabled={!isDirty || isSaving || !canEditWords} onClick={restoreSavedWords}>
-              Reset
+              {t('common.reset')}
             </button>
             <button className="button button-primary" type="button" disabled={isSaving || !isDirty || !canEditWords} onClick={() => void handleSubmit()}>
-              {isSaving ? 'Saving words…' : 'Save words'}
+              {isSaving ? t('wordSubmission.saving') : t('common.saveWords')}
             </button>
           </div>
         </>

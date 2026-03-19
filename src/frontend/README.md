@@ -1,73 +1,29 @@
-# React + TypeScript + Vite
+# The Hat frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Local development
+- Install dependencies with `npm install`.
+- Start the Vite dev server with `npm run dev`.
+- Set `VITE_API_BASE_URL` so the client can reach the backend API.
 
-Currently, two official plugins are available:
+## Internationalization
+The frontend uses `i18next` with `react-i18next`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Current locales
+- `en` — default
+- `pl` — example non-default locale
+- `ru` — additional non-default locale
 
-## React Compiler
+### How language selection works
+- The app reads the preferred language from local storage first.
+- If no stored preference exists, it falls back to the browser language.
+- Users can switch language from the in-app language switcher.
+- The selected language is persisted under the `the-hat:language` local-storage key.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Adding another locale
+1. Add a new translation resource under [src/locales](src/locales).
+2. Register the locale in [src/i18n.ts](src/i18n.ts).
+3. No component changes are required if the same translation keys are provided.
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Backend message localization
+Server-originated validation and gameplay messages can include stable message keys plus parameters.
+The frontend translates those keys through the same i18n resources and falls back to the server-provided English text when a key is missing.

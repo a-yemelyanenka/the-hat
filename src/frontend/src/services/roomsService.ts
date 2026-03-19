@@ -17,6 +17,7 @@ import type {
   UpdateRoomSettingsRequestDto,
 } from '../contracts/theHatContracts'
 import type { ValidationProblemDetails } from '../appModels'
+import i18n from '../i18n'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '')
 
@@ -40,7 +41,7 @@ export class RoomServiceError extends Error {
 
 export function getApiBaseUrl(): string {
   if (!API_BASE_URL) {
-    throw new RoomServiceError('VITE_API_BASE_URL is not configured.')
+    throw new RoomServiceError(i18n.t('serviceErrors.apiBaseUrlMissing'))
   }
 
   return API_BASE_URL
@@ -50,7 +51,7 @@ export async function createRoom(request: CreateRoomRequestDto): Promise<CreateR
   return sendJsonRequest<CreateRoomResponseDto>(getApiBaseUrl(), '/api/rooms', {
     method: 'POST',
     body: request,
-    defaultErrorMessage: 'Room creation failed. Try again in a moment.',
+    defaultErrorMessage: i18n.t('serviceErrors.createRoomFailed'),
   })
 }
 
@@ -58,8 +59,8 @@ export async function joinRoom(inviteCode: string, request: JoinRoomRequestDto):
   return sendJsonRequest<RoomSnapshotDto>(getApiBaseUrl(), `/api/rooms/invite/${encodeURIComponent(inviteCode)}/join`, {
     method: 'POST',
     body: request,
-    defaultErrorMessage: 'Joining the room failed. Try again in a moment.',
-    notFoundMessage: 'This invite link is invalid or the room no longer exists.',
+    defaultErrorMessage: i18n.t('serviceErrors.joinRoomFailed'),
+    notFoundMessage: i18n.t('serviceErrors.invalidInvite'),
   })
 }
 
@@ -70,8 +71,8 @@ export async function rejoinRoom(inviteCode: string, request: RejoinRoomRequestD
     {
       method: 'POST',
       body: request,
-      defaultErrorMessage: 'Rejoining the room failed. Try again in a moment.',
-      notFoundMessage: 'This invite link is invalid or the room no longer exists.',
+      defaultErrorMessage: i18n.t('serviceErrors.rejoinRoomFailed'),
+      notFoundMessage: i18n.t('serviceErrors.invalidInvite'),
     },
   )
 }
@@ -79,8 +80,8 @@ export async function rejoinRoom(inviteCode: string, request: RejoinRoomRequestD
 export async function getRoom(roomId: string): Promise<RoomSnapshotDto> {
   return sendJsonRequest<RoomSnapshotDto>(getApiBaseUrl(), `/api/rooms/${encodeURIComponent(roomId)}`, {
     method: 'GET',
-    defaultErrorMessage: 'The lobby could not be refreshed. Try again in a moment.',
-    notFoundMessage: 'This room no longer exists.',
+    defaultErrorMessage: i18n.t('serviceErrors.lobbyRefreshFailed'),
+    notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
   })
 }
 
@@ -91,8 +92,8 @@ export async function updateRoomSettings(
   return sendJsonRequest<RoomSnapshotDto>(getApiBaseUrl(), `/api/rooms/${encodeURIComponent(roomId)}/settings`, {
     method: 'PUT',
     body: request,
-    defaultErrorMessage: 'Saving lobby settings failed. Try again in a moment.',
-    notFoundMessage: 'This room no longer exists.',
+    defaultErrorMessage: i18n.t('app.saveSettingsFallback'),
+    notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
   })
 }
 
@@ -102,8 +103,8 @@ export async function getPlayerWords(roomId: string, playerId: string): Promise<
     `/api/rooms/${encodeURIComponent(roomId)}/players/${encodeURIComponent(playerId)}/words`,
     {
       method: 'GET',
-      defaultErrorMessage: 'Loading your submitted words failed. Try again in a moment.',
-      notFoundMessage: 'This room no longer exists.',
+      defaultErrorMessage: i18n.t('serviceErrors.loadWordsFailed'),
+      notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
     },
   )
 }
@@ -112,8 +113,8 @@ export async function submitWords(roomId: string, request: SubmitWordsRequestDto
   return sendJsonRequest<RoomSnapshotDto>(getApiBaseUrl(), `/api/rooms/${encodeURIComponent(roomId)}/words`, {
     method: 'PUT',
     body: request,
-    defaultErrorMessage: 'Saving your words failed. Try again in a moment.',
-    notFoundMessage: 'This room no longer exists.',
+    defaultErrorMessage: i18n.t('serviceErrors.saveWordsFailed'),
+    notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
   })
 }
 
@@ -121,8 +122,8 @@ export async function startGame(roomId: string, request: StartGameRequestDto): P
   return sendJsonRequest<RoomSnapshotDto>(getApiBaseUrl(), `/api/rooms/${encodeURIComponent(roomId)}/start`, {
     method: 'POST',
     body: request,
-    defaultErrorMessage: 'Starting the game failed. Try again in a moment.',
-    notFoundMessage: 'This room no longer exists.',
+    defaultErrorMessage: i18n.t('serviceErrors.startGameFailed'),
+    notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
   })
 }
 
@@ -130,8 +131,8 @@ export async function startTurn(roomId: string, request: StartTurnRequestDto): P
   return sendJsonRequest<RoomSnapshotDto>(getApiBaseUrl(), `/api/rooms/${encodeURIComponent(roomId)}/gameplay/start-turn`, {
     method: 'POST',
     body: request,
-    defaultErrorMessage: 'Starting the turn failed. Try again in a moment.',
-    notFoundMessage: 'This room no longer exists.',
+    defaultErrorMessage: i18n.t('serviceErrors.startTurnFailed'),
+    notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
   })
 }
 
@@ -141,8 +142,8 @@ export async function getGameplayView(roomId: string, playerId: string): Promise
     `/api/rooms/${encodeURIComponent(roomId)}/gameplay?playerId=${encodeURIComponent(playerId)}`,
     {
       method: 'GET',
-      defaultErrorMessage: 'Loading the gameplay view failed. Try again in a moment.',
-      notFoundMessage: 'This room no longer exists.',
+      defaultErrorMessage: i18n.t('serviceErrors.loadGameplayFailed'),
+      notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
     },
   )
 }
@@ -154,8 +155,8 @@ export async function confirmGuess(roomId: string, request: ConfirmGuessRequestD
     {
       method: 'POST',
       body: request,
-      defaultErrorMessage: 'Confirming the guess failed. Try again in a moment.',
-      notFoundMessage: 'This room no longer exists.',
+      defaultErrorMessage: i18n.t('serviceErrors.confirmGuessFailed'),
+      notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
     },
   )
 }
@@ -167,8 +168,8 @@ export async function endTurn(roomId: string, request: EndTurnRequestDto): Promi
     {
       method: 'POST',
       body: request,
-      defaultErrorMessage: 'Ending the current turn failed. Try again in a moment.',
-      notFoundMessage: 'This room no longer exists.',
+      defaultErrorMessage: i18n.t('serviceErrors.endTurnFailed'),
+      notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
     },
   )
 }
@@ -180,8 +181,8 @@ export async function pauseGame(roomId: string, request: PauseGameRequestDto): P
     {
       method: 'POST',
       body: request,
-      defaultErrorMessage: 'Pausing the game failed. Try again in a moment.',
-      notFoundMessage: 'This room no longer exists.',
+      defaultErrorMessage: i18n.t('serviceErrors.pauseGameFailed'),
+      notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
     },
   )
 }
@@ -193,8 +194,8 @@ export async function resumeGame(roomId: string, request: ResumeGameRequestDto):
     {
       method: 'POST',
       body: request,
-      defaultErrorMessage: 'Resuming the game failed. Try again in a moment.',
-      notFoundMessage: 'This room no longer exists.',
+      defaultErrorMessage: i18n.t('serviceErrors.resumeGameFailed'),
+      notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
     },
   )
 }
@@ -206,8 +207,8 @@ export async function continueRound(roomId: string, request: ContinueRoundReques
     {
       method: 'POST',
       body: request,
-      defaultErrorMessage: 'Continuing to the next round failed. Try again in a moment.',
-      notFoundMessage: 'This room no longer exists.',
+      defaultErrorMessage: i18n.t('serviceErrors.continueRoundFailed'),
+      notFoundMessage: i18n.t('serviceErrors.roomNotFound'),
     },
   )
 }
@@ -238,7 +239,7 @@ async function sendJsonRequest<T>(apiBaseUrl: string, path: string, options: Jso
       body: options.body ? JSON.stringify(options.body) : undefined,
     })
   } catch {
-    throw new RoomServiceError('Could not reach the backend. Check that the API is running.')
+    throw new RoomServiceError(i18n.t('serviceErrors.backendUnavailable'))
   }
 
   const contentType = response.headers.get('content-type') ?? ''
@@ -247,14 +248,14 @@ async function sendJsonRequest<T>(apiBaseUrl: string, path: string, options: Jso
 
   if (!response.ok) {
     if (response.status === 400) {
-      throw new RoomServiceError('Validation failed.', {
+      throw new RoomServiceError(i18n.t('serviceErrors.validationFailed'), {
         statusCode: response.status,
         validationProblem: responseBody as ValidationProblemDetails,
       })
     }
 
     if (response.status === 404) {
-      throw new RoomServiceError(options.notFoundMessage ?? 'The requested room could not be found.', {
+      throw new RoomServiceError(options.notFoundMessage ?? i18n.t('serviceErrors.roomNotFoundGeneric'), {
         statusCode: response.status,
       })
     }

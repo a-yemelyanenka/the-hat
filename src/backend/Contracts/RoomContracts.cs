@@ -2,6 +2,11 @@ using TheHat.Backend.Domain;
 
 namespace TheHat.Backend.Contracts;
 
+public sealed record LocalizedMessageDto(
+    string Key,
+    IReadOnlyDictionary<string, string> Parameters,
+    string? Fallback);
+
 public sealed record RoomSettingsDto(
     int WordsPerPlayer,
     int TurnDurationSeconds,
@@ -23,7 +28,8 @@ public sealed record PlayerSubmissionProgressDto(
 
 public sealed record LobbyReadinessDto(
     bool CanStart,
-    IReadOnlyList<string> BlockingReasons);
+    IReadOnlyList<string> BlockingReasons,
+    IReadOnlyList<LocalizedMessageDto> BlockingMessages);
 
 public sealed record WordSubmissionDto(
     string WordId,

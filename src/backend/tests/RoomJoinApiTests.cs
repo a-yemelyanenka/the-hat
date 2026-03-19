@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,6 +70,12 @@ public sealed class RoomJoinApiTests : IAsyncDisposable
         var response = await client.PostAsJsonAsync("/api/rooms/invite/ROOM1234/join", new JoinRoomRequestDto(" alice "));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var payload = await response.Content.ReadFromJsonAsync<LocalizedValidationProblemDetails>(JsonOptions);
+        Assert.NotNull(payload);
+        Assert.Equal("backend.validationFailed", payload!.MessageTitle?.Key);
+        Assert.True(payload.MessageErrors?.ContainsKey("displayName"));
+        Assert.Contains(payload.MessageErrors!["displayName"], message => message.Key == "backend.join.displayNameTaken");
     }
 
     [Fact]

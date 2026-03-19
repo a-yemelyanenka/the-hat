@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { LobbySettingsFormState, RealtimeSyncState, RoomSessionState } from '../appModels'
 import type { CopyState } from '../appModels'
 import type { PlayerDto, RoomSnapshotDto } from '../contracts/theHatContracts'
+import { translateLocalizedMessage } from '../localization'
 import { WordSubmissionPanel } from './WordSubmissionPanel'
 import './CreateRoomPage.css'
 import './LobbyPage.css'
@@ -56,6 +58,7 @@ export function LobbyPage({
   onStartGame,
   onRoomUpdated,
 }: LobbyPageProps) {
+  const { t } = useTranslation()
   const room = session?.room ?? null
   const currentPlayerId = session?.currentPlayerId ?? ''
   const currentPlayer = room?.players.find((player) => player.playerId === currentPlayerId) ?? null
@@ -80,13 +83,11 @@ export function LobbyPage({
     return (
       <main className="app-shell app-shell-narrow">
         <section className="panel empty-state">
-          <p className="eyebrow">Lobby</p>
-          <h1>Room data is not available in this session</h1>
-          <p className="lead">
-            Create a new room or reopen an invite link to continue in the current browser session.
-          </p>
+          <p className="eyebrow">{t('common.lobby')}</p>
+          <h1>{t('lobby.emptyTitle')}</h1>
+          <p className="lead">{t('lobby.emptyLead')}</p>
           <button className="button button-primary" type="button" onClick={onCreateRoom}>
-            Create another room
+            {t('common.createAnotherRoom')}
           </button>
         </section>
       </main>
@@ -97,14 +98,14 @@ export function LobbyPage({
   const canStartGame = room.phase === 'lobby' && room.lobbyReadiness.canStart
   const realtimeStatusMessage =
     realtimeSyncState === 'connected'
-      ? 'Live updates connected'
+      ? t('lobby.realtime.connected')
       : realtimeSyncState === 'connecting'
-        ? 'Connecting live updates…'
+        ? t('lobby.realtime.connecting')
         : realtimeSyncState === 'reconnecting'
-          ? 'Reconnecting live updates…'
+          ? t('lobby.realtime.reconnecting')
           : isRefreshing
-            ? 'Refreshing lobby…'
-            : 'Realtime unavailable, refreshing every few seconds'
+            ? t('lobby.realtime.refreshing')
+            : t('lobby.realtime.fallback')
 
   const handleSettingsSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -113,12 +114,12 @@ export function LobbyPage({
     const turnDurationSeconds = Number(settingsForm.turnDurationSeconds)
 
     if (!Number.isInteger(wordsPerPlayer) || wordsPerPlayer <= 0) {
-      setLocalSettingsError('Words per player must be a whole number greater than zero.')
+      setLocalSettingsError(t('lobby.localValidationWords'))
       return
     }
 
     if (!Number.isInteger(turnDurationSeconds) || turnDurationSeconds <= 0) {
-      setLocalSettingsError('Turn timer must be a whole number greater than zero.')
+      setLocalSettingsError(t('lobby.localValidationTimer'))
       return
     }
 
@@ -152,75 +153,78 @@ export function LobbyPage({
     <main className="app-shell">
       <section className="page-header">
         <div>
-          <p className="eyebrow">Lobby</p>
-          <h1>Live lobby ready for players</h1>
-          <p className="lead">
-            The player list, readiness state, and settings refresh automatically while everyone joins.
-          </p>
+          <p className="eyebrow">{t('common.lobby')}</p>
+          <h1>{t('lobby.title')}</h1>
+          <p className="lead">{t('lobby.lead')}</p>
         </div>
         <button className="button button-secondary" type="button" onClick={onCreateRoom}>
-          New room
+          {t('common.newRoom')}
         </button>
       </section>
 
-      <section className="lobby-status-row" aria-label="Lobby status">
+      <section className="lobby-status-row" aria-label={t('lobby.statusAriaLabel')}>
         <span className={`status-pill ${room.lobbyReadiness.canStart ? 'success' : 'warning'}`}>
-          {room.lobbyReadiness.canStart ? 'Ready to start' : 'Waiting for submissions'}
+          {room.lobbyReadiness.canStart ? t('lobby.readyToStart') : t('lobby.waitingForSubmissions')}
         </span>
         <span className="status-note">{realtimeStatusMessage}</span>
-        {currentPlayer ? <span className="status-note">You are {currentPlayer.displayName}</span> : null}
+        {currentPlayer ? <span className="status-note">{t('lobby.youAre', { displayName: currentPlayer.displayName })}</span> : null}
       </section>
 
       {syncError ? <p className="banner banner-error">{syncError}</p> : null}
       {room.phase !== 'lobby' ? (
         <p className="banner banner-success">
-          The game has started. Gameplay screens are planned in a later issue, so the lobby remains read-only for now.
+          {t('lobby.gameStartedBanner')}
         </p>
       ) : null}
 
       <section className="lobby-grid">
         <article className="panel invite-panel">
-          <h2>Invite</h2>
+          <h2>{t('lobby.inviteTitle')}</h2>
           <p className="invite-code">{room.inviteCode}</p>
-          <a className="invite-link" href={inviteLink}>
+          <a className="invite-link" href={inviteLink} aria-label={t('lobby.inviteLinkAriaLabel')}>
             {inviteLink}
           </a>
           <div className="invite-actions">
             <button className="button button-primary" type="button" onClick={onCopyInviteLink}>
-              Copy invite link
+              {t('lobby.copyInviteLink')}
             </button>
-            {copyState === 'copied' ? <span className="status-pill success">Copied</span> : null}
-            {copyState === 'failed' ? <span className="status-pill error">Copy failed</span> : null}
+            {copyState === 'copied' ? <span className="status-pill success">{t('common.copied')}</span> : null}
+            {copyState === 'failed' ? <span className="status-pill error">{t('common.copyFailed')}</span> : null}
           </div>
         </article>
 
         <article className="panel readiness-panel">
-          <h2>Start readiness</h2>
+          <h2>{t('lobby.startReadiness')}</h2>
           <dl className="summary-list">
             <div>
-              <dt>Host</dt>
-              <dd>{hostPlayer?.displayName ?? 'Host'}</dd>
+              <dt>{t('common.host')}</dt>
+              <dd>{hostPlayer?.displayName ?? t('lobby.hostFallback')}</dd>
             </div>
             <div>
-              <dt>Players connected</dt>
+              <dt>{t('lobby.playersConnected')}</dt>
               <dd>{room.players.length}</dd>
             </div>
             <div>
-              <dt>Submission progress</dt>
+              <dt>{t('lobby.submissionProgress')}</dt>
               <dd>
-                {room.submissionProgress.filter((progress) => progress.isComplete).length}/{room.submissionProgress.length} ready
+                {t('common.readyFraction', {
+                  readyCount: room.submissionProgress.filter((progress) => progress.isComplete).length,
+                  totalCount: room.submissionProgress.length,
+                })}
               </dd>
             </div>
           </dl>
 
           {room.lobbyReadiness.blockingReasons.length > 0 ? (
             <ul className="blocking-list">
-              {room.lobbyReadiness.blockingReasons.map((reason) => (
-                <li key={reason}>{reason}</li>
+              {room.lobbyReadiness.blockingReasons.map((reason, index) => (
+                <li key={`${reason}-${index}`}>
+                  {translateLocalizedMessage(t, room.lobbyReadiness.blockingMessages[index], reason)}
+                </li>
               ))}
             </ul>
           ) : (
-            <p className="status-note">Every active player has the required words, so the host can start.</p>
+            <p className="status-note">{t('lobby.readyToStartHint')}</p>
           )}
 
           {isHost ? (
@@ -231,17 +235,17 @@ export function LobbyPage({
                 disabled={!canStartGame || isStartingGame}
                 onClick={() => void onStartGame()}
               >
-                {isStartingGame ? 'Starting game…' : 'Start game'}
+                {isStartingGame ? t('lobby.startingGame') : t('common.startGame')}
               </button>
               {startError ? <p className="banner banner-error compact-banner">{startError}</p> : null}
             </div>
           ) : (
-            <p className="status-note">Only the host can start the game.</p>
+            <p className="status-note">{t('lobby.onlyHostCanStart')}</p>
           )}
         </article>
 
         <article className="panel players-panel">
-          <h2>Players</h2>
+          <h2>{t('lobby.playersTitle')}</h2>
           <ul className="player-list">
             {orderedPlayers.map((player, index) => {
               const progress = progressByPlayerId.get(player.playerId)
@@ -253,15 +257,20 @@ export function LobbyPage({
                     <div className="player-copy">
                       <strong>{player.displayName}</strong>
                       <div className="player-badges">
-                        {player.isHost ? <span className="status-pill">Host</span> : null}
-                        {player.playerId === currentPlayerId ? <span className="status-pill">You</span> : null}
-                        {!player.isActive ? <span className="status-pill error">Inactive</span> : null}
+                        {player.isHost ? <span className="status-pill">{t('common.host')}</span> : null}
+                        {player.playerId === currentPlayerId ? <span className="status-pill">{t('common.you')}</span> : null}
+                        {!player.isActive ? <span className="status-pill error">{t('common.inactive')}</span> : null}
                       </div>
                     </div>
                   </div>
                   <div className="player-progress">
                     <span className={`status-pill ${progress?.isComplete ? 'success' : 'warning'}`}>
-                      {progress ? `${progress.submittedCount}/${progress.requiredCount} words` : '0/0 words'}
+                      {progress
+                        ? t('lobby.wordsProgress', {
+                            submittedCount: progress.submittedCount,
+                            requiredCount: progress.requiredCount,
+                          })
+                        : t('lobby.zeroWordsProgress')}
                     </span>
                   </div>
                 </li>
@@ -273,13 +282,13 @@ export function LobbyPage({
         <WordSubmissionPanel room={room} currentPlayerId={currentPlayerId} onRoomUpdated={onRoomUpdated} />
 
         <article className="panel settings-panel">
-          <h2>{isHost ? 'Lobby settings' : 'Current settings'}</h2>
+          <h2>{isHost ? t('lobby.lobbySettings') : t('lobby.currentSettings')}</h2>
 
           {isHost ? (
             <form className="settings-form" onSubmit={handleSettingsSubmit} noValidate>
               <div className="two-column-grid">
                 <div className="form-field">
-                  <label htmlFor="lobbyWordsPerPlayer">Words per player</label>
+                  <label htmlFor="lobbyWordsPerPlayer">{t('common.wordsPerPlayer')}</label>
                   <input
                     id="lobbyWordsPerPlayer"
                     type="number"
@@ -298,7 +307,7 @@ export function LobbyPage({
                 </div>
 
                 <div className="form-field">
-                  <label htmlFor="lobbyTurnDuration">Turn timer (seconds)</label>
+                  <label htmlFor="lobbyTurnDuration">{t('common.turnTimerSeconds')}</label>
                   <input
                     id="lobbyTurnDuration"
                     type="number"
@@ -318,7 +327,7 @@ export function LobbyPage({
               </div>
 
               <fieldset className="form-field radio-group">
-                <legend>Player order mode</legend>
+                <legend>{t('common.playerOrderMode')}</legend>
                 <label className="choice-card compact-choice-card">
                   <input
                     type="radio"
@@ -334,8 +343,8 @@ export function LobbyPage({
                     }}
                   />
                   <span>
-                    <strong>Random</strong>
-                    <small>The backend keeps a random order visible to everyone.</small>
+                    <strong>{t('common.random')}</strong>
+                    <small>{t('lobby.randomDescription')}</small>
                   </span>
                 </label>
 
@@ -354,8 +363,8 @@ export function LobbyPage({
                     }}
                   />
                   <span>
-                    <strong>Manual</strong>
-                    <small>Move players up and down before the game starts.</small>
+                    <strong>{t('common.manual')}</strong>
+                    <small>{t('lobby.manualDescription')}</small>
                   </span>
                 </label>
               </fieldset>
@@ -366,23 +375,23 @@ export function LobbyPage({
 
               <div className="form-actions">
                 <button className="button button-primary" type="submit" disabled={!isDirty || isSavingSettings}>
-                  {isSavingSettings ? 'Saving settings…' : 'Save settings'}
+                  {isSavingSettings ? t('lobby.savingSettings') : t('common.saveSettings')}
                 </button>
               </div>
             </form>
           ) : (
             <dl className="summary-list">
               <div>
-                <dt>Words per player</dt>
+                <dt>{t('common.wordsPerPlayer')}</dt>
                 <dd>{room.settings.wordsPerPlayer}</dd>
               </div>
               <div>
-                <dt>Turn timer</dt>
-                <dd>{room.settings.turnDurationSeconds} seconds</dd>
+                <dt>{t('common.timer')}</dt>
+                <dd>{t('common.secondsLong', { count: room.settings.turnDurationSeconds })}</dd>
               </div>
               <div>
-                <dt>Order mode</dt>
-                <dd>{room.settings.playerOrderMode === 'random' ? 'Random' : 'Manual'}</dd>
+                <dt>{t('common.orderMode')}</dt>
+                <dd>{room.settings.playerOrderMode === 'random' ? t('common.random') : t('common.manual')}</dd>
               </div>
             </dl>
           )}
@@ -390,9 +399,9 @@ export function LobbyPage({
 
         <article className="panel order-panel">
           <div className="order-panel-header">
-            <h2>Player order</h2>
+            <h2>{t('lobby.playerOrder')}</h2>
             <span className="status-note">
-              {room.settings.playerOrderMode === 'random' ? 'Random order is active' : 'Manual order is active'}
+              {room.settings.playerOrderMode === 'random' ? t('lobby.randomOrderActive') : t('lobby.manualOrderActive')}
             </span>
           </div>
           <ol className="order-list">
@@ -407,7 +416,7 @@ export function LobbyPage({
                       disabled={index === 0 || isSavingSettings}
                       onClick={() => void handleMovePlayer(player.playerId, -1)}
                     >
-                      Move up
+                      {t('lobby.moveUp')}
                     </button>
                     <button
                       className="button button-secondary order-button"
@@ -415,16 +424,14 @@ export function LobbyPage({
                       disabled={index === orderedPlayers.length - 1 || isSavingSettings}
                       onClick={() => void handleMovePlayer(player.playerId, 1)}
                     >
-                      Move down
+                      {t('lobby.moveDown')}
                     </button>
                   </div>
                 ) : null}
               </li>
             ))}
           </ol>
-          <p className="status-note">
-            The explainer and the player on their left use this stored order cyclically when turns begin.
-          </p>
+          <p className="status-note">{t('lobby.storedOrderHint')}</p>
         </article>
       </section>
     </main>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import './HomePage.css'
 
 type HomePageProps = {
@@ -5,30 +6,29 @@ type HomePageProps = {
 }
 
 export function HomePage({ onCreateRoom }: HomePageProps) {
+  const { t } = useTranslation()
+
   return (
     <main className="app-shell">
       <section className="hero-panel">
         <div className="hero-copy">
-          <p className="eyebrow">The Hat</p>
-          <h1>Create a room and start the lobby</h1>
-          <p className="lead">
-            Set the host name, choose the initial game settings, and open the lobby
-            in a flow that works on mobile and desktop.
-          </p>
+          <p className="eyebrow">{t('home.eyebrow')}</p>
+          <h1>{t('home.title')}</h1>
+          <p className="lead">{t('home.lead')}</p>
           <div className="hero-actions">
             <button className="button button-primary" type="button" onClick={onCreateRoom}>
-              Create room
+              {t('common.createRoom')}
             </button>
           </div>
         </div>
 
-        <aside className="panel summary-card" aria-label="Create room highlights">
-          <h2>Included in this flow</h2>
+        <aside className="panel summary-card" aria-label={t('home.summaryAriaLabel')}>
+          <h2>{t('home.includedTitle')}</h2>
           <ul className="feature-list">
-            <li>Host display name entry</li>
-            <li>Words-per-player and turn timer settings</li>
-            <li>Random or manual player order mode</li>
-            <li>Lobby routing after a successful API call</li>
+            <li>{t('home.featureHostName')}</li>
+            <li>{t('home.featureSettings')}</li>
+            <li>{t('home.featureOrderMode')}</li>
+            <li>{t('home.featureRouting')}</li>
           </ul>
         </aside>
       </section>

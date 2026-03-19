@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { RealtimeSyncState, RoomSessionState } from '../appModels'
 import type { GameplayViewDto, PlayerDto, RoundRule } from '../contracts/theHatContracts'
 import type { CopyState } from '../appModels'
@@ -37,60 +38,62 @@ type RankedPlayer = {
   isTied: boolean
 }
 
-const roundRuleCopy: Record<RoundRule, { title: string; description: string }> = {
-  explainNoSynonyms: {
-    title: 'Round 1 · Explain normally',
-    description: 'Use normal clues, but do not use synonyms.',
-  },
-  gesturesOnly: {
-    title: 'Round 2 · Gestures only',
-    description: 'Act it out without speaking.',
-  },
-  oneWordOnly: {
-    title: 'Round 3 · One word only',
-    description: 'Use exactly one word and avoid synonyms.',
-  },
-}
-
-function getRealtimeStatusMessage(realtimeSyncState: RealtimeSyncState, isRefreshing: boolean): string {
+function getRealtimeStatusMessage(
+  realtimeSyncState: RealtimeSyncState,
+  isRefreshing: boolean,
+  t: ReturnType<typeof useTranslation>['t'],
+): string {
   if (realtimeSyncState === 'connected') {
-    return 'Live updates connected'
+    return t('gameplay.realtime.connected')
   }
 
   if (realtimeSyncState === 'connecting') {
-    return 'Connecting live updates…'
+    return t('gameplay.realtime.connecting')
   }
 
   if (realtimeSyncState === 'reconnecting') {
-    return 'Reconnecting live updates…'
+    return t('gameplay.realtime.reconnecting')
   }
 
-  return isRefreshing ? 'Refreshing gameplay…' : 'Realtime unavailable, refreshing periodically'
+  return isRefreshing ? t('gameplay.realtime.refreshing') : t('gameplay.realtime.fallback')
 }
 
-function getRoundCopy(rule: RoundRule | null | undefined): { title: string; description: string } | null {
+function getRoundCopy(
+  rule: RoundRule | null | undefined,
+  t: ReturnType<typeof useTranslation>['t'],
+): { title: string; description: string } | null {
   if (!rule) {
     return null
   }
 
-  return roundRuleCopy[rule]
+  return {
+    title: t(`gameplay.rounds.${rule}.title`),
+    description: t(`gameplay.rounds.${rule}.description`),
+  }
 }
 
-function getUpcomingRuleCopy(roundNumber: number | null | undefined): { title: string; description: string } | null {
+function getUpcomingRuleCopy(
+  roundNumber: number | null | undefined,
+  t: ReturnType<typeof useTranslation>['t'],
+): { title: string; description: string } | null {
   if (!roundNumber || roundNumber >= 3) {
     return null
   }
 
   const nextRule = roundNumber === 1 ? 'gesturesOnly' : 'oneWordOnly'
-  return roundRuleCopy[nextRule]
+  return getRoundCopy(nextRule, t)
 }
 
-function getPlayerName(players: PlayerDto[], playerId: string | null | undefined): string {
+function getPlayerName(
+  players: PlayerDto[],
+  playerId: string | null | undefined,
+  t: ReturnType<typeof useTranslation>['t'],
+): string {
   if (!playerId) {
     return '—'
   }
 
-  return players.find((player) => player.playerId === playerId)?.displayName ?? 'Unknown player'
+  return players.find((player) => player.playerId === playerId)?.displayName ?? t('common.unknownPlayer')
 }
 
 function rankPlayers(players: PlayerDto[]): RankedPlayer[] {
@@ -166,6 +169,7 @@ export function GameplayPage({
   inviteLink,
   onCopyInviteLink,
 }: GameplayPageProps) {
+  const { t } = useTranslation()
   const room = session?.room ?? null
   const currentPlayerId = session?.currentPlayerId ?? ''
   const [, setTimerTick] = useState(0)
@@ -188,11 +192,11 @@ export function GameplayPage({
     return (
       <main className="app-shell app-shell-narrow">
         <section className="panel empty-state">
-          <p className="eyebrow">Gameplay</p>
-          <h1>Room data is not available in this session</h1>
-          <p className="lead">Create a new room or reopen the invite link to continue.</p>
+          <p className="eyebrow">{t('common.gameplay')}</p>
+          <h1>{t('gameplay.emptyTitle')}</h1>
+          <p className="lead">{t('gameplay.emptyLead')}</p>
           <button className="button button-primary" type="button" onClick={onCreateRoom}>
-            Create another room
+            {t('common.createAnotherRoom')}
           </button>
         </section>
       </main>
@@ -202,12 +206,12 @@ export function GameplayPage({
   const currentPlayer = room.players.find((player) => player.playerId === currentPlayerId) ?? null
   const currentRound = room.rounds.find((round) => round.roundNumber === room.currentRoundNumber) ?? null
   const currentRule = gameplayView?.currentRule ?? currentRound?.rule ?? null
-  const roundCopy = getRoundCopy(currentRule)
+  const roundCopy = getRoundCopy(currentRule, t)
   const currentTurn = room.currentTurn
   const isHost = currentPlayerId === room.hostPlayerId
   const rankedPlayers = rankPlayers(room.players)
   const summaryRoundNumber = room.phase === 'roundSummary' || room.phase === 'completed' ? room.currentRoundNumber : null
-  const upcomingRuleCopy = getUpcomingRuleCopy(summaryRoundNumber)
+  const upcomingRuleCopy = getUpcomingRuleCopy(summaryRoundNumber, t)
   const activePlayers = room.players.filter((player) => player.isActive)
   const interruptedTurnPlayers = currentTurn
     ? room.players.filter(
@@ -218,39 +222,39 @@ export function GameplayPage({
   const isInterruptedTurn = interruptedTurnPlayers.length > 0
   const canEndInterruptedTurn = room.phase === 'inProgress' && gameplayView?.isCurrentPlayerExplainer && isInterruptedTurn
   const waitingForReconnect = room.phase === 'paused' && !currentTurn && activePlayers.length < 2
-  const explainerName = getPlayerName(room.players, currentTurn?.explainerPlayerId)
-  const guesserName = getPlayerName(room.players, currentTurn?.guesserPlayerId)
+  const explainerName = getPlayerName(room.players, currentTurn?.explainerPlayerId, t)
+  const guesserName = getPlayerName(room.players, currentTurn?.guesserPlayerId, t)
   const isAwaitingTurnStart = room.phase === 'awaitingTurnStart' && Boolean(currentTurn)
   const phaseLabel =
     room.phase === 'awaitingTurnStart'
-      ? 'Waiting for turn start'
+      ? t('gameplay.phase.awaitingTurnStart')
       : room.phase === 'inProgress'
-      ? 'Turn in progress'
+      ? t('gameplay.phase.inProgress')
       : room.phase === 'paused'
-        ? 'Game paused'
+        ? t('gameplay.phase.paused')
         : room.phase === 'roundSummary'
-          ? `Round ${summaryRoundNumber ?? '—'} complete`
-          : 'Final results'
+          ? t('gameplay.phase.roundComplete', { roundNumber: summaryRoundNumber ?? '—' })
+          : t('gameplay.phase.finalResults')
 
   return (
     <main className="app-shell">
       <section className="page-header">
         <div>
-          <p className="eyebrow">Gameplay</p>
-          <h1>The round is live</h1>
-          <p className="lead">The backend now drives rounds, turns, timer expiry, pause and resume, and round summaries.</p>
+          <p className="eyebrow">{t('common.gameplay')}</p>
+          <h1>{t('gameplay.title')}</h1>
+          <p className="lead">{t('gameplay.lead')}</p>
         </div>
         <button className="button button-secondary" type="button" onClick={onCreateRoom}>
-          New room
+          {t('common.newRoom')}
         </button>
       </section>
 
-      <section className="lobby-status-row gameplay-status-row" aria-label="Gameplay status">
+      <section className="lobby-status-row gameplay-status-row" aria-label={t('gameplay.statusAriaLabel')}>
         <span className={`status-pill ${room.phase === 'completed' ? 'success' : room.phase === 'paused' ? 'warning' : ''}`}>
           {phaseLabel}
         </span>
-        <span className="status-note">{getRealtimeStatusMessage(realtimeSyncState, isRefreshing)}</span>
-        {currentPlayer ? <span className="status-note">You are {currentPlayer.displayName}</span> : null}
+        <span className="status-note">{getRealtimeStatusMessage(realtimeSyncState, isRefreshing, t)}</span>
+        {currentPlayer ? <span className="status-note">{t('lobby.youAre', { displayName: currentPlayer.displayName })}</span> : null}
       </section>
 
       {syncError ? <p className="banner banner-error">{syncError}</p> : null}
@@ -259,231 +263,244 @@ export function GameplayPage({
       <section className="gameplay-grid">
         <article className="panel gameplay-panel gameplay-hero-panel">
           <div className="gameplay-hero-copy">
-            <p className="eyebrow">{roundCopy?.title ?? 'Gameplay status'}</p>
+            <p className="eyebrow">{roundCopy?.title ?? t('gameplay.heroEyebrowFallback')}</p>
             <h2>
               {room.phase === 'completed'
-                ? 'Final results are ready'
+                ? t('gameplay.heroTitle.completed')
                 : room.phase === 'roundSummary'
-                  ? `Round ${summaryRoundNumber ?? '—'} complete`
+                  ? t('gameplay.heroTitle.roundSummary', { roundNumber: summaryRoundNumber ?? '—' })
                   : isAwaitingTurnStart
                     ? gameplayView?.isCurrentPlayerExplainer
-                      ? 'You are up next'
-                      : `${explainerName} starts next`
+                      ? t('gameplay.heroTitle.currentPlayerNext')
+                      : t('gameplay.heroTitle.nextExplainer', { explainerName })
                   : waitingForReconnect
-                    ? 'Waiting for another player to reconnect'
+                    ? t('gameplay.heroTitle.waitingReconnect')
                     : gameplayView?.isCurrentPlayerExplainer
-                      ? 'Your turn to explain'
+                      ? t('gameplay.heroTitle.currentPlayerExplain')
                       : gameplayView?.isCurrentPlayerGuesser
-                        ? 'Your turn to guess'
-                        : 'Watch the current turn'}
+                        ? t('gameplay.heroTitle.currentPlayerGuess')
+                        : t('gameplay.heroTitle.observer')}
             </h2>
             <p className="lead gameplay-hero-lead">
               {room.phase === 'completed'
-                ? 'Review the final ranking and start a fresh room when everyone is ready.'
+                ? t('gameplay.heroLead.completed')
                 : room.phase === 'roundSummary'
-                  ? 'Scores are cumulative. The host can move everyone into the next round when ready.'
+                  ? t('gameplay.heroLead.roundSummary')
                   : isAwaitingTurnStart
                     ? gameplayView?.isCurrentPlayerExplainer
-                      ? `You will explain to ${guesserName}. Start when you are ready.`
-                      : `${explainerName} will explain and ${guesserName} will guess next.`
+                      ? t('gameplay.heroLead.currentPlayerNext', { guesserName })
+                      : t('gameplay.heroLead.nextPlayers', { explainerName, guesserName })
                   : isInterruptedTurn
-                    ? `${interruptedTurnPlayers.map((player) => player.displayName).join(', ')} ${interruptedTurnPlayers.length === 1 ? 'is' : 'are'} temporarily inactive. The current turn stays in progress.`
+                    ? t(
+                        interruptedTurnPlayers.length === 1
+                          ? 'gameplay.heroLead.interruptedTurnSingle'
+                          : 'gameplay.heroLead.interruptedTurnPlural',
+                        {
+                          playerNames: interruptedTurnPlayers.map((player) => player.displayName).join(', '),
+                        },
+                      )
                   : waitingForReconnect
-                    ? 'Gameplay is paused because fewer than two active players remain in the room.'
-                    : roundCopy?.description ?? 'Live turn details stay in sync for every player.'}
+                    ? t('gameplay.heroLead.waitingReconnect')
+                    : roundCopy?.description ?? t('gameplay.heroLead.fallback')}
             </p>
           </div>
 
           <div className="gameplay-hero-meta">
             <div className="hero-stat">
-              <span>Round</span>
+              <span>{t('common.round')}</span>
               <strong>{room.currentRoundNumber ?? '—'}</strong>
             </div>
             <div className="hero-stat">
-              <span>Timer</span>
+              <span>{t('common.timer')}</span>
               <strong>{liveRemainingSeconds ?? '—'}s</strong>
             </div>
             <div className="hero-stat">
-              <span>Active players</span>
+              <span>{t('common.activePlayers')}</span>
               <strong>{activePlayers.length}</strong>
             </div>
           </div>
         </article>
 
         <article className="panel gameplay-panel invite-panel">
-          <h2>Invite</h2>
+          <h2>{t('gameplay.inviteTitle')}</h2>
           <p className="invite-code">{room.inviteCode}</p>
           <a className="invite-link" href={inviteLink}>
             {inviteLink}
           </a>
           <div className="invite-actions">
             <button className="button button-primary" type="button" onClick={onCopyInviteLink}>
-              Copy invite link
+              {t('common.copyInviteLink')}
             </button>
-            {copyState === 'copied' ? <span className="status-pill success">Copied</span> : null}
-            {copyState === 'failed' ? <span className="status-pill error">Copy failed</span> : null}
+            {copyState === 'copied' ? <span className="status-pill success">{t('common.copied')}</span> : null}
+            {copyState === 'failed' ? <span className="status-pill error">{t('common.copyFailed')}</span> : null}
           </div>
         </article>
 
         <article className="panel gameplay-panel">
-          <h2>Round rule</h2>
+          <h2>{t('common.roundRule')}</h2>
           {roundCopy ? (
             <>
               <p className="gameplay-rule-title">{roundCopy.title}</p>
               <p>{roundCopy.description}</p>
             </>
           ) : (
-            <p>The next round rule will appear here when gameplay starts.</p>
+            <p>{t('gameplay.roundRuleFallback')}</p>
           )}
         </article>
 
         <article className="panel gameplay-panel">
-          <h2>Turn status</h2>
+          <h2>{t('gameplay.turnStatus')}</h2>
           {currentTurn ? (
             <>
               <dl className="summary-list">
                 <div>
-                  <dt>Turn</dt>
+                  <dt>{t('common.turn')}</dt>
                   <dd>{currentTurn.turnNumber}</dd>
                 </div>
                 <div>
-                  <dt>Explainer</dt>
+                  <dt>{t('common.explainer')}</dt>
                   <dd>{explainerName}</dd>
                 </div>
                 <div>
-                  <dt>Guesser</dt>
+                  <dt>{t('common.guesser')}</dt>
                   <dd>{guesserName}</dd>
                 </div>
                 <div>
-                  <dt>Timer</dt>
-                  <dd>{isAwaitingTurnStart ? 'Starts on click' : `${liveRemainingSeconds ?? '—'} seconds left`}</dd>
+                  <dt>{t('common.timer')}</dt>
+                  <dd>
+                    {isAwaitingTurnStart
+                      ? t('gameplay.startsOnClick')
+                      : liveRemainingSeconds === null
+                        ? '—'
+                        : t('common.secondsLeft', { count: liveRemainingSeconds })}
+                  </dd>
                 </div>
               </dl>
 
               <div className="turn-role-grid">
                 <article className={`turn-role-card ${gameplayView?.isCurrentPlayerExplainer ? 'turn-role-card-active' : ''}`}>
-                  <span className="eyebrow">Explainer</span>
+                  <span className="eyebrow">{t('common.explainer')}</span>
                   <strong>{explainerName}</strong>
-                  <p>{gameplayView?.isCurrentPlayerExplainer ? 'You can see the word and confirm each correct guess.' : 'This player sees the active word.'}</p>
+                  <p>{gameplayView?.isCurrentPlayerExplainer ? t('gameplay.roleExplainerCurrent') : t('gameplay.roleExplainerOther')}</p>
                   {currentTurn && room.players.some((player) => player.playerId === currentTurn.explainerPlayerId && !player.isActive) ? (
-                    <span className="status-pill error">Inactive</span>
+                    <span className="status-pill error">{t('common.inactive')}</span>
                   ) : null}
                 </article>
 
                 <article className={`turn-role-card ${gameplayView?.isCurrentPlayerGuesser ? 'turn-role-card-active' : ''}`}>
-                  <span className="eyebrow">Guesser</span>
+                  <span className="eyebrow">{t('common.guesser')}</span>
                   <strong>{guesserName}</strong>
-                  <p>{gameplayView?.isCurrentPlayerGuesser ? 'You are the guesser for this turn.' : 'This player is answering clues right now.'}</p>
+                  <p>{gameplayView?.isCurrentPlayerGuesser ? t('gameplay.roleGuesserCurrent') : t('gameplay.roleGuesserOther')}</p>
                   {currentTurn && room.players.some((player) => player.playerId === currentTurn.guesserPlayerId && !player.isActive) ? (
-                    <span className="status-pill error">Inactive</span>
+                    <span className="status-pill error">{t('common.inactive')}</span>
                   ) : null}
                 </article>
               </div>
             </>
           ) : room.phase === 'roundSummary' ? (
-            <p>Waiting for the host to start the next round.</p>
+            <p>{t('gameplay.waitingNextRound')}</p>
           ) : waitingForReconnect ? (
-            <p>The active turn was cleared because too few active players remain. Reconnect another player to continue.</p>
+            <p>{t('gameplay.clearedTurnWaitingReconnect')}</p>
           ) : (
-            <p>No active turn is running.</p>
+            <p>{t('gameplay.noActiveTurn')}</p>
           )}
         </article>
 
         <article className="panel gameplay-panel gameplay-word-panel">
-          <h2>Current word</h2>
+          <h2>{t('common.currentWord')}</h2>
           {room.phase === 'awaitingTurnStart' ? (
             <div className="round-transition-copy">
-              <p>The next turn is ready.</p>
+              <p>{t('gameplay.nextTurnReady')}</p>
               <div className="transition-rule-card gameplay-next-turn-card">
-                <span className="eyebrow">Next turn</span>
+                <span className="eyebrow">{t('common.nextTurn')}</span>
                 <strong>
-                  {explainerName} explains · {guesserName} guesses
+                  {t('gameplay.nextTurnPlayers', { explainerName, guesserName })}
                 </strong>
-                <p>The explainer starts the timer manually when ready.</p>
+                <p>{t('gameplay.startTimerManually')}</p>
               </div>
               {gameplayView?.isCurrentPlayerExplainer ? (
                 <button className="button button-primary" type="button" disabled={isStartingTurn} onClick={() => void onStartTurn()}>
-                  {isStartingTurn ? 'Starting turn…' : 'Start turn'}
+                  {isStartingTurn ? t('gameplay.startingTurn') : t('gameplay.startTurn')}
                 </button>
               ) : (
-                <p className="status-note">Waiting for {explainerName} to start the turn.</p>
+                <p className="status-note">{t('gameplay.waitingForExplainer', { explainerName })}</p>
               )}
             </div>
           ) : room.phase === 'inProgress' || room.phase === 'paused' ? (
             gameplayView?.isCurrentPlayerExplainer ? (
               <>
-                <p className="active-word">{gameplayView.activeWord ?? 'Loading word…'}</p>
-                <p className="status-note">Only the explainer can see the active word.</p>
-                {isInterruptedTurn ? <p className="status-note">A turn player is inactive. You can keep confirming guesses or end the turn manually.</p> : null}
+                <p className="active-word">{gameplayView.activeWord ?? t('common.loadingWord')}</p>
+                <p className="status-note">{t('gameplay.onlyExplainerSeesWord')}</p>
+                {isInterruptedTurn ? <p className="status-note">{t('gameplay.interruptedTurnHint')}</p> : null}
                 <button
                   className="button button-primary"
                   type="button"
                   disabled={room.phase !== 'inProgress' || isConfirmingGuess || !gameplayView.activeWord}
                   onClick={() => void onConfirmGuess()}
                 >
-                  {isConfirmingGuess ? 'Confirming guess…' : 'Confirm guessed word'}
+                  {isConfirmingGuess ? t('gameplay.confirmingGuess') : t('gameplay.confirmGuessedWord')}
                 </button>
                 {canEndInterruptedTurn ? (
                   <button className="button button-secondary" type="button" disabled={isEndingTurn} onClick={() => void onEndTurn()}>
-                    {isEndingTurn ? 'Ending turn…' : 'End turn'}
+                    {isEndingTurn ? t('gameplay.endingTurn') : t('gameplay.endTurn')}
                   </button>
                 ) : null}
               </>
             ) : (
               <>
-                <p className="observer-copy">The current word stays hidden from observers and the guesser.</p>
-                {gameplayView?.isCurrentPlayerGuesser ? <span className="status-pill">You are guessing this turn</span> : null}
-                {!gameplayView?.isCurrentPlayerGuesser ? <span className="status-pill">Observer view</span> : null}
-                {isInterruptedTurn ? <p className="status-note">The current turn stays live even while a turn player is inactive.</p> : null}
+                <p className="observer-copy">{t('gameplay.hiddenWordHint')}</p>
+                {gameplayView?.isCurrentPlayerGuesser ? <span className="status-pill">{t('gameplay.youAreGuessing')}</span> : null}
+                {!gameplayView?.isCurrentPlayerGuesser ? <span className="status-pill">{t('common.observerView')}</span> : null}
+                {isInterruptedTurn ? <p className="status-note">{t('gameplay.interruptedObserverHint')}</p> : null}
               </>
             )
           ) : room.phase === 'roundSummary' ? (
             <div className="round-transition-copy">
-              <p>Round {summaryRoundNumber ?? '—'} is complete. Review scores and continue when ready.</p>
+              <p>{t('gameplay.roundCompleteReview', { roundNumber: summaryRoundNumber ?? '—' })}</p>
               {upcomingRuleCopy ? (
                 <div className="transition-rule-card">
-                  <span className="eyebrow">Next round</span>
+                  <span className="eyebrow">{t('common.nextRound')}</span>
                   <strong>{upcomingRuleCopy.title}</strong>
                   <p>{upcomingRuleCopy.description}</p>
                 </div>
               ) : null}
             </div>
           ) : (
-            <p>The game is complete. Final results are shown below.</p>
+            <p>{t('gameplay.gameCompleteShownBelow')}</p>
           )}
         </article>
 
         <article className="panel gameplay-panel">
-          <h2>Host controls</h2>
+          <h2>{t('common.hostControls')}</h2>
           {isHost ? (
             <div className="host-actions">
               {room.phase === 'inProgress' ? (
                 <button className="button button-secondary" type="button" disabled={isPausingGame} onClick={() => void onPauseGame()}>
-                  {isPausingGame ? 'Pausing…' : 'Pause game'}
+                  {isPausingGame ? t('gameplay.pausing') : t('gameplay.pauseGame')}
                 </button>
               ) : null}
 
               {room.phase === 'paused' ? (
                 <button className="button button-primary" type="button" disabled={isResumingGame} onClick={() => void onResumeGame()}>
-                  {isResumingGame ? 'Resuming…' : 'Resume game'}
+                  {isResumingGame ? t('gameplay.resuming') : t('gameplay.resumeGame')}
                 </button>
               ) : null}
 
               {room.phase === 'roundSummary' ? (
                 <button className="button button-primary" type="button" disabled={isContinuingRound} onClick={() => void onContinueRound()}>
-                  {isContinuingRound ? 'Starting next round…' : 'Start next round'}
+                  {isContinuingRound ? t('gameplay.startingNextRound') : t('gameplay.startNextRound')}
                 </button>
               ) : null}
 
-              {room.phase === 'completed' ? <p className="status-note">All three rounds are complete.</p> : null}
+              {room.phase === 'completed' ? <p className="status-note">{t('gameplay.allRoundsComplete')}</p> : null}
             </div>
           ) : (
-            <p className="status-note">Only the host can pause, resume, or start the next round.</p>
+            <p className="status-note">{t('gameplay.onlyHostControls')}</p>
           )}
         </article>
 
         <article className="panel gameplay-panel gameplay-scoreboard-panel">
-          <h2>{room.phase === 'completed' ? 'Final ranking' : 'Scoreboard'}</h2>
+          <h2>{room.phase === 'completed' ? t('common.finalRanking') : t('common.scoreboard')}</h2>
           <ol className="scoreboard-list">
             {rankedPlayers.map(({ player, rank, isTied }) => (
               <li key={player.playerId} className={`scoreboard-row ${!player.isActive ? 'inactive-player' : ''}`}>
@@ -492,13 +509,13 @@ export function GameplayPage({
                     #{rank} · {player.displayName}
                   </strong>
                   <div className="player-badges">
-                    {player.isHost ? <span className="status-pill">Host</span> : null}
-                    {player.playerId === currentPlayerId ? <span className="status-pill">You</span> : null}
-                    {!player.isActive ? <span className="status-pill error">Inactive</span> : null}
-                    {isTied ? <span className="status-pill warning">Tie</span> : null}
+                    {player.isHost ? <span className="status-pill">{t('common.host')}</span> : null}
+                    {player.playerId === currentPlayerId ? <span className="status-pill">{t('common.you')}</span> : null}
+                    {!player.isActive ? <span className="status-pill error">{t('common.inactive')}</span> : null}
+                    {isTied ? <span className="status-pill warning">{t('gameplay.tie')}</span> : null}
                   </div>
                 </div>
-                <strong>{player.score} pts</strong>
+                <strong>{t('common.pointsShort', { count: player.score })}</strong>
               </li>
             ))}
           </ol>
@@ -506,21 +523,21 @@ export function GameplayPage({
 
         {(room.phase === 'roundSummary' || room.phase === 'completed') && summaryRoundNumber ? (
           <article className="panel gameplay-panel gameplay-summary-panel">
-            <h2>{room.phase === 'completed' ? 'Game complete' : `Round ${summaryRoundNumber} summary`}</h2>
+            <h2>{room.phase === 'completed' ? t('gameplay.gameComplete') : t('gameplay.phase.roundComplete', { roundNumber: summaryRoundNumber })}</h2>
             <p>
               {room.phase === 'completed'
-                ? 'All rounds are finished. Rankings stay cumulative across the full game.'
-                : `Scores above are cumulative after round ${summaryRoundNumber}. The next round reuses the same word pool with a fresh shuffle.`}
+                ? t('gameplay.gameCompleteBody')
+                : t('gameplay.roundSummaryBody', { roundNumber: summaryRoundNumber })}
             </p>
             {room.phase === 'roundSummary' && upcomingRuleCopy ? (
               <div className="transition-rule-card">
-                <span className="eyebrow">Prepare for the next rule</span>
+                <span className="eyebrow">{t('gameplay.prepareNextRule')}</span>
                 <strong>{upcomingRuleCopy.title}</strong>
                 <p>{upcomingRuleCopy.description}</p>
               </div>
             ) : null}
             {room.phase === 'completed' ? (
-              <p className="status-note">Ties stay grouped on the final ranking so the winner view is clear for everyone.</p>
+              <p className="status-note">{t('gameplay.finalTieHint')}</p>
             ) : null}
           </article>
         ) : null}

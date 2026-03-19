@@ -57,8 +57,8 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 - [x] Issue 29 — Build round transition and summary screens
 
 ## Epic 7: Internationalization and usability
-- [ ] Issue 30 — Add internationalization framework to frontend
-- [ ] Issue 31 — Externalize backend/user-facing game messages for i18n support
+- [x] Issue 30 — Add internationalization framework to frontend
+- [x] Issue 31 — Externalize backend/user-facing game messages for i18n support
 - [ ] Issue 32 — Improve responsive UX for mobile-first gameplay
 
 ## Epic 8: Release readiness
@@ -100,8 +100,8 @@ This file tracks implementation progress for the backlog defined in [docs/featur
 | 27 | Done | Gameplay screen now leads with a phone-friendly active-turn hero, role cards, and explainer-only word controls. |  |
 | 28 | Done | Turn-status and scoreboard panels stay live for every player and visibly distinguish inactive participants. |  |
 | 29 | Done | Round summaries now include next-round rule callouts and the final results view is clearer at game completion. |  |
-| 30 | Not started |  |  |
-| 31 | Not started |  |  |
+| 30 | Done | Added `i18next`/`react-i18next`, externalized frontend copy, added English + Polish resources, and documented in-app language switching plus locale registration. |  |
+| 31 | Done | Backend validation/readiness messages now emit stable localization keys with parameters, and the frontend translates server-originated messages through shared i18n resources. |  |
 | 32 | Not started |  |  |
 | 33 | Not started |  |  |
 | 34 | Not started |  |  |

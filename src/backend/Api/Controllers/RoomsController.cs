@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using TheHat.Backend.Api.Localization;
 using TheHat.Backend.Contracts;
 using TheHat.Backend.Domain;
 
@@ -54,7 +55,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         return Ok(gameplayState.ToDto());
@@ -78,7 +79,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         var response = new CreateRoomResponseDto(room.ToDto());
@@ -112,7 +113,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -140,7 +141,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         return Ok(submission.ToDto());
@@ -171,7 +172,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -199,7 +200,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -227,7 +228,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -255,7 +256,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -283,7 +284,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -311,7 +312,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -339,7 +340,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -367,7 +368,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -395,7 +396,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -423,7 +424,7 @@ public sealed class RoomsController(
         }
         catch (DomainValidationException exception)
         {
-            return ValidationProblem(CreateModelState(exception));
+            return CreateValidationProblem(exception);
         }
 
         await roomRealtimeNotifier.PublishRoomUpdatedAsync(room, cancellationToken);
@@ -443,5 +444,23 @@ public sealed class RoomsController(
         }
 
         return modelState;
+    }
+
+    private ActionResult CreateValidationProblem(DomainValidationException exception)
+    {
+        var modelState = CreateModelState(exception);
+        var details = new ValidationProblemDetails(modelState)
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = BackendMessageCatalog.ValidationFailed.Fallback,
+        };
+
+        details.Extensions["messageTitle"] = BackendMessageCatalog.ValidationFailed;
+        details.Extensions["messageErrors"] = exception.Errors.ToDictionary(
+            error => error.Key,
+            error => error.Value.Select(BackendMessageCatalog.Map).ToArray(),
+            StringComparer.Ordinal);
+
+        return BadRequest(details);
     }
 }
